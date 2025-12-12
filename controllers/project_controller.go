@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GET /projects - List projects the logged-in user belongs to
+// GET /projects - List projects (Collaborative + Status Preload)
 func FindProjects(c *gin.Context) {
 	// 1. Get logged-in user
 	userContext, _ := c.Get("user")
@@ -16,9 +16,13 @@ func FindProjects(c *gin.Context) {
 
 	var projects []models.Project
 
-	// 2. Use GORM Association Mode to find projects for this user
-	// This generates SQL like: SELECT * FROM projects JOIN project_users ... WHERE user_id = ?
-	err := config.DB.Model(&user).Association("Projects").Find(&projects)
+	// 2. Fetch Projects + Tasks + Status
+	// We use Preload("Tasks.Status") to tell GORM:
+	// "Get the Project -> Get its Tasks -> AND Get the Status for each Task"
+	err := config.DB.
+		Preload("Tasks.Status").              // <--- THE KEY CHANGE
+		Model(&user).Association("Projects"). // Filter: Only projects for this user
+		Find(&projects)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch projects"})
