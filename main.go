@@ -3,26 +3,37 @@ package main
 import (
 	"gotask-backend/config"
 	"gotask-backend/controllers"
+	"gotask-backend/middlewares"
+	"os"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	// 1. Connect to DB
-	config.ConnectDatabase()
+	// Set a default secret if not in .env (FOR DEV ONLY)
+	if os.Getenv("SECRET_KEY") == "" {
+		os.Setenv("SECRET_KEY", "supersecretkey")
+	}
 
-	// 2. Initialize Router
+	config.ConnectDatabase()
 	r := gin.Default()
 
-	// 3. Define Routes
-	// Project Routes
-	r.GET("/projects", controllers.FindProjects)
-	r.POST("/projects", controllers.CreateProject)
+	r.Use(middlewares.EnsureJSON())
 
-	// Task Routes
-	r.POST("/tasks", controllers.CreateTask)
-	r.PATCH("/tasks/:id", controllers.UpdateTask)
+	// PUBLIC ROUTES
+	r.POST("/signup", controllers.Signup)
+	r.POST("/login", controllers.Login)
 
-	// 4. Run Server (Default port 8080)
+	// PROTECTED ROUTES
+	// We group these so we can apply middleware to all of them at once
+	protected := r.Group("/")
+	protected.Use(middlewares.RequireAuth)
+	{
+		protected.GET("/projects", controllers.FindProjects)
+		protected.POST("/projects", controllers.CreateProject)
+		protected.POST("/tasks", controllers.CreateTask)
+		protected.PATCH("/tasks/:id", controllers.UpdateTask)
+	}
+
 	r.Run(":8080")
 }

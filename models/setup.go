@@ -21,3 +21,10 @@ type Task struct {
 	ProjectID uint      `json:"project_id"` // Foreign Key
 	CreatedAt time.Time `json:"created_at"`
 }
+
+type User struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	Email     string    `gorm:"unique" json:"email"`
+	Password  string    `json:"-"` // The "-" means: never send password in JSON response
+	CreatedAt time.Time `json:"created_at"`
+}

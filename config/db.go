@@ -39,7 +39,7 @@ func ConnectDatabase() {
 	}
 
 	// 5. Migrate
-	database.AutoMigrate(&models.Project{}, &models.Task{})
+	database.AutoMigrate(&models.User{}, &models.Project{}, &models.Task{})
 
 	DB = database
 	fmt.Println("Database connected successfully using .env!")
