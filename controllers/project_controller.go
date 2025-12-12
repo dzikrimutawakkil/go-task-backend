@@ -20,7 +20,8 @@ func FindProjects(c *gin.Context) {
 	// We use Preload("Tasks.Status") to tell GORM:
 	// "Get the Project -> Get its Tasks -> AND Get the Status for each Task"
 	err := config.DB.
-		Preload("Tasks.Status").              // <--- THE KEY CHANGE
+		Preload("Tasks.Status").
+		Preload("Tasks.Assignees").           // <--- THE KEY CHANGE
 		Model(&user).Association("Projects"). // Filter: Only projects for this user
 		Find(&projects)
 

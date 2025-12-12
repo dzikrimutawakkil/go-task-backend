@@ -37,6 +37,8 @@ func main() {
 		protected.POST("/tasks", controllers.CreateTask)
 		protected.PATCH("/tasks/:id", controllers.UpdateTask)
 		protected.DELETE("/tasks/:id", controllers.DeleteTask)
+		protected.POST("/tasks/:id/take", controllers.TakeTask)
+		protected.POST("/tasks/:id/assign_users", controllers.AssignUsers)
 	}
 
 	r.Run(":8080")

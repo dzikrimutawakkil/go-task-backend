@@ -116,7 +116,7 @@ func FindTasksByProject(c *gin.Context) {
 
 	// 3. Fetch Tasks with Status
 	var tasks []models.Task
-	result := config.DB.Preload("Status").Where("project_id = ?", projectID).Find(&tasks)
+	result := config.DB.Preload("Status").Preload("Assignees").Where("project_id = ?", projectID).Find(&tasks)
 
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tasks"})
@@ -124,4 +124,83 @@ func FindTasksByProject(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": tasks})
+}
+
+// POST /tasks/:id/take - Logged-in user assigns themselves
+func TakeTask(c *gin.Context) {
+	taskID := c.Param("id")
+
+	// 1. Get logged-in user
+	userContext, _ := c.Get("user")
+	user := userContext.(models.User)
+
+	// 2. Find Task
+	var task models.Task
+	if err := config.DB.First(&task, taskID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		return
+	}
+
+	// 3. Check if already assigned (Prevent duplicates)
+	// We count how many times this user is assigned to this task (should be 0 or 1)
+	var count int64
+	config.DB.Table("task_users").Where("task_id = ? AND user_id = ?", task.ID, user.ID).Count(&count)
+
+	if count > 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "You are already assigned to this task"})
+		return
+	}
+
+	// 4. Assign the user
+	config.DB.Model(&task).Association("Assignees").Append(&user)
+
+	c.JSON(http.StatusOK, gin.H{"message": "Task assigned to you successfully"})
+}
+
+// POST /tasks/:id/assign_users - Assign multiple users by email
+func AssignUsers(c *gin.Context) {
+	taskID := c.Param("id")
+
+	// 1. Define input structure for an Array of emails
+	var input struct {
+		Emails []string `json:"emails" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 2. Find the Task
+	var task models.Task
+	if err := config.DB.First(&task, taskID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		return
+	}
+
+	// 3. Find All Users matching the emails
+	var users []models.User
+	// This SQL equivalent is: SELECT * FROM users WHERE email IN ('a@test.com', 'b@test.com')
+	if err := config.DB.Where("email IN ?", input.Emails).Find(&users).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
+		return
+	}
+
+	if len(users) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "No matching users found"})
+		return
+	}
+
+	// 4. Append these users to the Task's Assignees
+	// GORM handles duplicates automatically (it won't add the same user twice to the join table)
+	err := config.DB.Model(&task).Association("Assignees").Append(&users)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign users"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Users assigned successfully",
+		"count":   len(users),
+	})
 }
