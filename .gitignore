@@ -1,0 +1,6 @@
+# Ignore the env file containing secrets
+.env
+
+# Ignore build binaries
+*.exe
+*.dll
