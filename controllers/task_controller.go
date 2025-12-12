@@ -46,3 +46,20 @@ func UpdateTask(c *gin.Context) {
 	config.DB.Model(&task).Updates(input)
 	c.JSON(http.StatusOK, gin.H{"data": task})
 }
+
+// DELETE /tasks/:id
+func DeleteTask(c *gin.Context) {
+	id := c.Param("id")
+
+	// 1. Check if task exists
+	var task models.Task
+	if err := config.DB.First(&task, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		return
+	}
+
+	// 2. Delete the task
+	config.DB.Delete(&task)
+
+	c.JSON(http.StatusOK, gin.H{"message": "Task deleted successfully"})
+}

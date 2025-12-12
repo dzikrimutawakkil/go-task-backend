@@ -25,7 +25,6 @@ func main() {
 	r.POST("/login", controllers.Login)
 
 	// PROTECTED ROUTES
-	// We group these so we can apply middleware to all of them at once
 	protected := r.Group("/")
 	protected.Use(middlewares.RequireAuth)
 	{
@@ -33,6 +32,9 @@ func main() {
 		protected.POST("/projects", controllers.CreateProject)
 		protected.POST("/tasks", controllers.CreateTask)
 		protected.PATCH("/tasks/:id", controllers.UpdateTask)
+		protected.POST("/projects/:id/invite", controllers.InviteUser)
+		protected.DELETE("/projects/:id", controllers.DeleteProject)
+		protected.DELETE("/tasks/:id", controllers.DeleteTask)
 	}
 
 	r.Run(":8080")
