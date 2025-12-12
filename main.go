@@ -30,10 +30,12 @@ func main() {
 	{
 		protected.GET("/projects", controllers.FindProjects)
 		protected.POST("/projects", controllers.CreateProject)
-		protected.POST("/tasks", controllers.CreateTask)
-		protected.PATCH("/tasks/:id", controllers.UpdateTask)
 		protected.POST("/projects/:id/invite", controllers.InviteUser)
 		protected.DELETE("/projects/:id", controllers.DeleteProject)
+
+		protected.GET("/projects/:id/tasks", controllers.FindTasksByProject)
+		protected.POST("/tasks", controllers.CreateTask)
+		protected.PATCH("/tasks/:id", controllers.UpdateTask)
 		protected.DELETE("/tasks/:id", controllers.DeleteTask)
 	}
 

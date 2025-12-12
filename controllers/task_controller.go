@@ -94,3 +94,34 @@ func DeleteTask(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Task deleted successfully"})
 }
+
+// GET /projects/:id/tasks - Get all tasks for a specific project
+func FindTasksByProject(c *gin.Context) {
+	projectID := c.Param("id")
+
+	// 1. Get logged-in user
+	userContext, _ := c.Get("user")
+	user := userContext.(models.User)
+
+	// 2. Security Check: Does this user have access to this project?
+	// We query the "project_users" join table via the User model
+	var project models.Project
+	err := config.DB.Model(&user).Association("Projects").Find(&project, projectID)
+
+	// If project.ID is 0, it means the relation doesn't exist (User isn't in the project)
+	if err != nil || project.ID == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Project not found or access denied"})
+		return
+	}
+
+	// 3. Fetch Tasks with Status
+	var tasks []models.Task
+	result := config.DB.Preload("Status").Where("project_id = ?", projectID).Find(&tasks)
+
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tasks"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": tasks})
+}
