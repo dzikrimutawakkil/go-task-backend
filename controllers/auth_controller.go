@@ -3,6 +3,7 @@ package controllers
 import (
 	"gotask-backend/config"
 	"gotask-backend/models"
+	"gotask-backend/utils"
 	"net/http"
 	"os"
 	"time"
@@ -20,14 +21,14 @@ func Signup(c *gin.Context) {
 	}
 
 	if c.Bind(&body) != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read body"})
+		utils.SendError(c, http.StatusBadRequest, "Failed to read body")
 		return
 	}
 
 	// Hash the password
 	hash, err := bcrypt.GenerateFromPassword([]byte(body.Password), 10)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to hash password"})
+		utils.SendError(c, http.StatusBadRequest, "Failed to hash password")
 		return
 	}
 
@@ -36,11 +37,11 @@ func Signup(c *gin.Context) {
 	result := config.DB.Create(&user)
 
 	if result.Error != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to create user"})
+		utils.SendError(c, http.StatusBadRequest, "Failed to create user")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "User created successfully"})
+	utils.SendSuccess(c, "User created successfully")
 }
 
 // Helper: Login to get the JWT
@@ -51,7 +52,7 @@ func Login(c *gin.Context) {
 	}
 
 	if c.Bind(&body) != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read body"})
+		utils.SendError(c, http.StatusBadRequest, "Failed to read body")
 		return
 	}
 
@@ -60,14 +61,14 @@ func Login(c *gin.Context) {
 	config.DB.First(&user, "email = ?", body.Email)
 
 	if user.ID == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid email or password"})
+		utils.SendError(c, http.StatusBadRequest, "Invalid email or password")
 		return
 	}
 
 	// 2. Compare sent password with saved user password hash
 	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(body.Password))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid email or password"})
+		utils.SendError(c, http.StatusBadRequest, "Invalid email or password")
 		return
 	}
 
@@ -82,10 +83,12 @@ func Login(c *gin.Context) {
 	tokenString, err := token.SignedString([]byte(os.Getenv("SECRET_KEY")))
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to create token"})
+		utils.SendError(c, http.StatusBadRequest, "Failed to create token")
 		return
 	}
 
 	// 4. Send it back
-	c.JSON(http.StatusOK, gin.H{"token": tokenString})
+	utils.SendSuccess(c, "Login successful", gin.H{
+		"token": tokenString,
+	})
 }

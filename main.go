@@ -32,6 +32,7 @@ func main() {
 		protected.POST("/projects", controllers.CreateProject)
 		protected.POST("/projects/:id/invite", controllers.InviteUser)
 		protected.DELETE("/projects/:id", controllers.DeleteProject)
+		protected.GET("/projects/:id/users", controllers.FindProjectMembers)
 
 		protected.GET("/projects/:id/tasks", controllers.FindTasksByProject)
 		protected.POST("/tasks", controllers.CreateTask)

@@ -3,6 +3,7 @@ package controllers
 import (
 	"gotask-backend/config"
 	"gotask-backend/models"
+	"gotask-backend/utils"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -19,13 +20,13 @@ func CreateTask(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.SendError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	var project models.Project
 	if err := config.DB.First(&project, input.ProjectID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Project not found"})
+		utils.SendError(c, http.StatusNotFound, "Project not found")
 		return
 	}
 
@@ -46,36 +47,65 @@ func CreateTask(c *gin.Context) {
 
 	config.DB.Preload("Status").First(&task, task.ID)
 
-	c.JSON(http.StatusOK, gin.H{"data": task})
+	utils.SendSuccess(c, "Task created successfully", task)
 }
 
 // PATCH /tasks/:id (Don't forget to update this too!)
+// PATCH /tasks/:id - Update any task detail (Title, Status, Assignees)
 func UpdateTask(c *gin.Context) {
 	id := c.Param("id")
 	var task models.Task
 
+	// 1. Find Task
 	if err := config.DB.First(&task, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		utils.SendError(c, http.StatusNotFound, "Task not found")
 		return
 	}
 
-	// We accept StatusID now
+	// 2. Define Input with Pointers
+	// Pointers allow us to distinguish between "missing field" (nil) and "empty value"
 	var input struct {
-		Title    string `json:"title"`
-		StatusID uint   `json:"status_id"`
+		Title       *string `json:"title"`        // Pointer to string
+		StatusID    *uint   `json:"status_id"`    // Pointer to int
+		AssigneeIDs []uint  `json:"assignee_ids"` // List of User IDs to REPLACE current assignees
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.SendError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	config.DB.Model(&task).Updates(input)
+	// 3. Prepare Updates for Basic Fields
+	// We use a map so GORM only updates the non-nil fields
+	updates := make(map[string]interface{})
 
-	// Preload Status so the response looks nice
-	config.DB.Preload("Status").First(&task, task.ID)
+	if input.Title != nil {
+		updates["title"] = *input.Title
+	}
+	if input.StatusID != nil {
+		updates["status_id"] = *input.StatusID
+	}
 
-	c.JSON(http.StatusOK, gin.H{"data": task})
+	// Apply Basic Updates
+	if len(updates) > 0 {
+		config.DB.Model(&task).Updates(updates)
+	}
+
+	// 4. Handle Assignees (If provided)
+	// This REPLACES the current list with the new list (Sync)
+	if input.AssigneeIDs != nil {
+		var users []models.User
+		if len(input.AssigneeIDs) > 0 {
+			config.DB.Find(&users, input.AssigneeIDs)
+		}
+		// "Replace" the current assignees with the new set
+		config.DB.Model(&task).Association("Assignees").Replace(&users)
+	}
+
+	// 5. Reload Task with all details (Status + Assignees)
+	config.DB.Preload("Status").Preload("Assignees").First(&task, task.ID)
+
+	utils.SendSuccess(c, "Task updated successfully", task)
 }
 
 // DELETE /tasks/:id
@@ -85,14 +115,14 @@ func DeleteTask(c *gin.Context) {
 	// 1. Check if task exists
 	var task models.Task
 	if err := config.DB.First(&task, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		utils.SendError(c, http.StatusNotFound, "Task not found")
 		return
 	}
 
 	// 2. Delete the task
 	config.DB.Delete(&task)
 
-	c.JSON(http.StatusOK, gin.H{"message": "Task deleted successfully"})
+	utils.SendSuccess(c, "Task deleted successfully")
 }
 
 // GET /projects/:id/tasks - Get all tasks for a specific project
@@ -110,7 +140,7 @@ func FindTasksByProject(c *gin.Context) {
 
 	// If project.ID is 0, it means the relation doesn't exist (User isn't in the project)
 	if err != nil || project.ID == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Project not found or access denied"})
+		utils.SendError(c, http.StatusNotFound, "Project not found or access denied")
 		return
 	}
 
@@ -119,11 +149,11 @@ func FindTasksByProject(c *gin.Context) {
 	result := config.DB.Preload("Status").Preload("Assignees").Where("project_id = ?", projectID).Find(&tasks)
 
 	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tasks"})
+		utils.SendError(c, http.StatusInternalServerError, "Failed to fetch tasks")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": tasks})
+	utils.SendSuccess(c, "success", tasks)
 }
 
 // POST /tasks/:id/take - Logged-in user assigns themselves
@@ -137,7 +167,7 @@ func TakeTask(c *gin.Context) {
 	// 2. Find Task
 	var task models.Task
 	if err := config.DB.First(&task, taskID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		utils.SendError(c, http.StatusNotFound, "Task not found")
 		return
 	}
 
@@ -147,60 +177,75 @@ func TakeTask(c *gin.Context) {
 	config.DB.Table("task_users").Where("task_id = ? AND user_id = ?", task.ID, user.ID).Count(&count)
 
 	if count > 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "You are already assigned to this task"})
+		utils.SendError(c, http.StatusBadRequest, "You are already assigned to this task")
 		return
 	}
 
 	// 4. Assign the user
 	config.DB.Model(&task).Association("Assignees").Append(&user)
 
-	c.JSON(http.StatusOK, gin.H{"message": "Task assigned to you successfully"})
+	utils.SendSuccess(c, "Task assigned to you successfully")
 }
 
 // POST /tasks/:id/assign_users - Assign multiple users by email
 func AssignUsers(c *gin.Context) {
 	taskID := c.Param("id")
 
-	// 1. Define input structure for an Array of emails
 	var input struct {
 		Emails []string `json:"emails" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.SendError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	// 2. Find the Task
 	var task models.Task
 	if err := config.DB.First(&task, taskID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		utils.SendError(c, http.StatusNotFound, "Task not found")
 		return
 	}
 
-	// 3. Find All Users matching the emails
+	// Find users
 	var users []models.User
-	// This SQL equivalent is: SELECT * FROM users WHERE email IN ('a@test.com', 'b@test.com')
 	if err := config.DB.Where("email IN ?", input.Emails).Find(&users).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
+		utils.SendError(c, http.StatusInternalServerError, "Failed to fetch users")
 		return
 	}
 
 	if len(users) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "No matching users found"})
+		utils.SendError(c, http.StatusNotFound, "No matching users found")
 		return
 	}
 
-	// 4. Append these users to the Task's Assignees
-	// GORM handles duplicates automatically (it won't add the same user twice to the join table)
+	foundEmails := make(map[string]bool)
+	for _, u := range users {
+		foundEmails[u.Email] = true
+	}
+
+	var missingEmails []string
+	for _, email := range input.Emails {
+		if !foundEmails[email] {
+			missingEmails = append(missingEmails, email)
+		}
+	}
+
+	// Assign existing users
 	err := config.DB.Model(&task).Association("Assignees").Append(&users)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign users"})
+		utils.SendError(c, http.StatusInternalServerError, "Failed to assign users")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Users assigned successfully",
-		"count":   len(users),
+	// Return success but also mention if anyone was skipped
+	responseMsg := "Users assigned successfully"
+	if len(missingEmails) > 0 {
+		responseMsg = "Some users were assigned, but some were not found"
+	}
+
+	utils.SendSuccess(c, responseMsg, gin.H{
+		"assigned_count": len(users),
+		"assigned_users": users,
+		"missing_emails": missingEmails,
 	})
 }
