@@ -124,3 +124,60 @@ func Login(c *gin.Context) {
 		"token": tokenString,
 	})
 }
+
+// POST /organizations/invite
+func AddUserToOrg(c *gin.Context) {
+	// 1. Get Current User
+	userContext, _ := c.Get("user")
+	currentUser := userContext.(models.User)
+
+	var body struct {
+		Email string `json:"email" binding:"required"`
+		OrgID uint   `json:"org_id" binding:"required"`
+	}
+
+	if c.ShouldBindJSON(&body) != nil {
+		utils.SendError(c, http.StatusBadRequest, "Invalid body")
+		return
+	}
+
+	// 2. SECURITY: Check if Current User is in the Org
+	var count int64
+	config.DB.Table("organization_users").
+		Where("user_id = ? AND organization_id = ?", currentUser.ID, body.OrgID).
+		Count(&count)
+
+	if count == 0 {
+		utils.SendError(c, http.StatusForbidden, "You are not a member of this organization")
+		return
+	}
+
+	// 3. Find the User they want to invite
+	var userToAdd models.User
+	if err := config.DB.Where("email = ?", body.Email).First(&userToAdd).Error; err != nil {
+		utils.SendError(c, http.StatusNotFound, "User with this email not found")
+		return
+	}
+
+	// 4. Check if they are ALREADY a member
+	var exists int64
+	config.DB.Table("organization_users").
+		Where("user_id = ? AND organization_id = ?", userToAdd.ID, body.OrgID).
+		Count(&exists)
+
+	if exists > 0 {
+		utils.SendError(c, http.StatusBadRequest, "User is already in the organization")
+		return
+	}
+
+	// 5. Add them to the Organization
+	var org models.Organization
+	org.ID = body.OrgID
+
+	if err := config.DB.Model(&org).Association("Users").Append(&userToAdd); err != nil {
+		utils.SendError(c, http.StatusInternalServerError, "Failed to add user")
+		return
+	}
+
+	utils.SendSuccess(c, "User added to organization successfully")
+}

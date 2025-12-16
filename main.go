@@ -44,6 +44,8 @@ func main() {
 		protected.DELETE("/tasks/:id", tasks.DeleteTask)
 		protected.POST("/tasks/:id/take", tasks.TakeTask)
 		protected.POST("/tasks/:id/assign_users", tasks.AssignUsers)
+
+		protected.POST("/organizations/invite", auth.AddUserToOrg)
 	}
 
 	r.Run(":8080")
