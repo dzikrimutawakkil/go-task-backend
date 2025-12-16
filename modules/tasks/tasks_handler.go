@@ -1,7 +1,6 @@
 package tasks
 
 import (
-	"gotask-backend/config"
 	"gotask-backend/models"
 	"gotask-backend/utils"
 	"net/http"
@@ -10,9 +9,30 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func CreateTask(c *gin.Context) {
-	// ... (Input binding and Project validation stay the same) ...
-	var input struct {
+type Handler struct {
+	service TaskService
+}
+
+func NewHandler(service TaskService) *Handler {
+	return &Handler{service: service}
+}
+
+// GET /projects/:id/tasks
+func (h *Handler) FindTasksByProject(c *gin.Context) {
+	projectID := c.Param("id")
+
+	tasks, err := h.service.GetTasksByProject(projectID)
+	if err != nil {
+		utils.SendError(c, http.StatusInternalServerError, "Failed to fetch tasks")
+		return
+	}
+
+	utils.SendSuccess(c, "success", tasks)
+}
+
+// POST /tasks
+func (h *Handler) CreateTask(c *gin.Context) {
+	var req struct {
 		Title      string     `json:"title" binding:"required"`
 		ProjectID  uint       `json:"project_id" binding:"required"`
 		StatusID   uint       `json:"status_id"`
@@ -21,62 +41,34 @@ func CreateTask(c *gin.Context) {
 		EndDate    *time.Time `json:"end_date"`
 	}
 
-	if err := c.ShouldBindJSON(&input); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.SendError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	var project models.Project
-	if err := config.DB.First(&project, input.ProjectID).Error; err != nil {
-		utils.SendError(c, http.StatusNotFound, "Project not found")
+	input := CreateTaskInput{
+		Title:      req.Title,
+		ProjectID:  req.ProjectID,
+		StatusID:   req.StatusID,
+		PriorityID: req.PriorityID,
+		StartDate:  req.StartDate,
+		EndDate:    req.EndDate,
+	}
+
+	task, err := h.service.CreateTask(input)
+	if err != nil {
+		utils.SendError(c, http.StatusInternalServerError, "Failed to create task")
 		return
 	}
-
-	if input.StatusID == 0 {
-		var todoStatus models.Status
-		if err := config.DB.Where("slug = ?", "todo").First(&todoStatus).Error; err == nil {
-			input.StatusID = todoStatus.ID
-		}
-	}
-
-	if input.PriorityID == 0 {
-		var medium models.Priority
-		if err := config.DB.Where("name = ?", "Medium").First(&medium).Error; err == nil {
-			input.PriorityID = medium.ID
-		}
-	}
-
-	// 3. Create the Task
-	task := models.Task{
-		Title:      input.Title,
-		ProjectID:  input.ProjectID,
-		StatusID:   input.StatusID,
-		PriorityID: input.PriorityID,
-		StartDate:  input.StartDate,
-		EndDate:    input.EndDate,
-	}
-	config.DB.Create(&task)
-
-	config.DB.Preload("Status").Preload("Priority").First(&task, task.ID)
 
 	utils.SendSuccess(c, "Task created successfully", task)
 }
 
-// PATCH /tasks/:id (Don't forget to update this too!)
-// PATCH /tasks/:id - Update any task detail (Title, Status, Assignees)
-func UpdateTask(c *gin.Context) {
+// PATCH /tasks/:id
+func (h *Handler) UpdateTask(c *gin.Context) {
 	id := c.Param("id")
-	var task models.Task
 
-	// 1. Find Task
-	if err := config.DB.First(&task, id).Error; err != nil {
-		utils.SendError(c, http.StatusNotFound, "Task not found")
-		return
-	}
-
-	// 2. Define Input with Pointers
-	// Pointers allow us to distinguish between "missing field" (nil) and "empty value"
-	var input struct {
+	var req struct {
 		Title       *string    `json:"title"`
 		StatusID    *uint      `json:"status_id"`
 		PriorityID  *uint      `json:"priority_id"`
@@ -85,185 +77,81 @@ func UpdateTask(c *gin.Context) {
 		EndDate     *time.Time `json:"end_date"`
 	}
 
-	if err := c.ShouldBindJSON(&input); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.SendError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	// 3. Prepare Updates for Basic Fields
-	// We use a map so GORM only updates the non-nil fields
-	updates := make(map[string]interface{})
-
-	if input.Title != nil {
-		updates["title"] = *input.Title
-	}
-	if input.StatusID != nil {
-		updates["status_id"] = *input.StatusID
-	}
-	if input.PriorityID != nil {
-		updates["priority_id"] = *input.PriorityID
-	}
-	if input.StartDate != nil {
-		updates["start_date"] = *input.StartDate
-	}
-	if input.EndDate != nil {
-		updates["end_date"] = *input.EndDate
+	input := UpdateTaskInput{
+		Title:       req.Title,
+		StatusID:    req.StatusID,
+		PriorityID:  req.PriorityID,
+		AssigneeIDs: req.AssigneeIDs,
+		StartDate:   req.StartDate,
+		EndDate:     req.EndDate,
 	}
 
-	// Apply Basic Updates
-	if len(updates) > 0 {
-		config.DB.Model(&task).Updates(updates)
+	task, err := h.service.UpdateTask(id, input)
+	if err != nil {
+		utils.SendError(c, http.StatusInternalServerError, err.Error())
+		return
 	}
-
-	// 4. Handle Assignees (If provided)
-	// This REPLACES the current list with the new list (Sync)
-	if input.AssigneeIDs != nil {
-		var users []models.User
-		if len(input.AssigneeIDs) > 0 {
-			config.DB.Find(&users, input.AssigneeIDs)
-		}
-		// "Replace" the current assignees with the new set
-		config.DB.Model(&task).Association("Assignees").Replace(&users)
-	}
-
-	// 5. Reload Task with all details (Status + Assignees)
-	config.DB.Preload("Status").Preload("Assignees").Preload("Priority").First(&task, task.ID)
 
 	utils.SendSuccess(c, "Task updated successfully", task)
 }
 
 // DELETE /tasks/:id
-func DeleteTask(c *gin.Context) {
+func (h *Handler) DeleteTask(c *gin.Context) {
 	id := c.Param("id")
 
-	// 1. Check if task exists
-	var task models.Task
-	if err := config.DB.First(&task, id).Error; err != nil {
-		utils.SendError(c, http.StatusNotFound, "Task not found")
+	if err := h.service.DeleteTask(id); err != nil {
+		utils.SendError(c, http.StatusInternalServerError, "Failed to delete task")
 		return
 	}
-
-	// 2. Delete the task
-	config.DB.Delete(&task)
 
 	utils.SendSuccess(c, "Task deleted successfully")
 }
 
-// GET /projects/:id/tasks - Get all tasks for a specific project
-// GET /projects/:id/tasks
-func FindTasksByProject(c *gin.Context) {
-	projectID := c.Param("id")
-	orgID := c.MustGet("org_id").(string) // Get from Header
-
-	// 1. NEW SECURITY CHECK:
-	// Does this Project belong to the current Organization?
-	var project models.Project
-	if err := config.DB.Where("id = ? AND organization_id = ?", projectID, orgID).First(&project).Error; err != nil {
-		utils.SendError(c, http.StatusNotFound, "Project not found or access denied")
-		return
-	}
-
-	// 2. Fetch Tasks (Same as before)
-	var tasks []models.Task
-	config.DB.Preload("Status").
-		Preload("Assignees").
-		Preload("Priority").
-		Where("project_id = ?", projectID).
-		Find(&tasks)
-
-	utils.SendSuccess(c, "success", tasks)
-}
-
-// POST /tasks/:id/take - Logged-in user assigns themselves
-func TakeTask(c *gin.Context) {
+// POST /tasks/:id/take (Assign self)
+func (h *Handler) TakeTask(c *gin.Context) {
 	taskID := c.Param("id")
 
-	// 1. Get logged-in user
 	userContext, _ := c.Get("user")
 	user := userContext.(models.User)
 
-	// 2. Find Task
-	var task models.Task
-	if err := config.DB.First(&task, taskID).Error; err != nil {
-		utils.SendError(c, http.StatusNotFound, "Task not found")
-		return
-	}
-
-	// 3. Check if already assigned (Prevent duplicates)
-	// We count how many times this user is assigned to this task (should be 0 or 1)
-	var count int64
-	config.DB.Table("task_users").Where("task_id = ? AND user_id = ?", task.ID, user.ID).Count(&count)
-
-	if count > 0 {
-		utils.SendError(c, http.StatusBadRequest, "You are already assigned to this task")
-		return
-	}
-
-	// 4. Assign the user
-	config.DB.Model(&task).Association("Assignees").Append(&user)
-
-	utils.SendSuccess(c, "Task assigned to you successfully")
-}
-
-// POST /tasks/:id/assign_users - Assign multiple users by email
-func AssignUsers(c *gin.Context) {
-	taskID := c.Param("id")
-
-	var input struct {
-		Emails []string `json:"emails" binding:"required"`
-	}
-
-	if err := c.ShouldBindJSON(&input); err != nil {
+	// Reuse the AssignUsersByEmail service logic
+	_, err := h.service.AssignUsersByEmail(taskID, []string{user.Email})
+	if err != nil {
 		utils.SendError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	var task models.Task
-	if err := config.DB.First(&task, taskID).Error; err != nil {
-		utils.SendError(c, http.StatusNotFound, "Task not found")
+	utils.SendSuccess(c, "Task assigned to you successfully")
+}
+
+// POST /tasks/:id/assign_users
+func (h *Handler) AssignUsers(c *gin.Context) {
+	taskID := c.Param("id")
+
+	var req struct {
+		Emails []string `json:"emails" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.SendError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	// Find users
-	var users []models.User
-	if err := config.DB.Where("email IN ?", input.Emails).Find(&users).Error; err != nil {
-		utils.SendError(c, http.StatusInternalServerError, "Failed to fetch users")
-		return
-	}
-
-	if len(users) == 0 {
-		utils.SendError(c, http.StatusNotFound, "No matching users found")
-		return
-	}
-
-	foundEmails := make(map[string]bool)
-	for _, u := range users {
-		foundEmails[u.Email] = true
-	}
-
-	var missingEmails []string
-	for _, email := range input.Emails {
-		if !foundEmails[email] {
-			missingEmails = append(missingEmails, email)
-		}
-	}
-
-	// Assign existing users
-	err := config.DB.Model(&task).Association("Assignees").Append(&users)
+	result, err := h.service.AssignUsersByEmail(taskID, req.Emails)
 	if err != nil {
-		utils.SendError(c, http.StatusInternalServerError, "Failed to assign users")
+		utils.SendError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	// Return success but also mention if anyone was skipped
-	responseMsg := "Users assigned successfully"
-	if len(missingEmails) > 0 {
-		responseMsg = "Some users were assigned, but some were not found"
+	msg := "Users assigned successfully"
+	if len(result.MissingEmails) > 0 {
+		msg = "Some users were assigned, but some emails were not found"
 	}
 
-	utils.SendSuccess(c, responseMsg, gin.H{
-		"assigned_count": len(users),
-		"assigned_users": users,
-		"missing_emails": missingEmails,
-	})
+	utils.SendSuccess(c, msg, result)
 }

@@ -22,10 +22,15 @@ func main() {
 	config.ConnectDatabase()
 	r := gin.Default()
 
-	// 1. Dependency Injection for Projects
+	// Dependency Injection for Projects
 	projectRepo := projects.NewProjectRepository(config.DB)
 	projectService := projects.NewProjectService(projectRepo)
 	projectHandler := projects.NewProjectHandler(projectService)
+
+	// Dependency Injection for Tasks
+	taskRepo := tasks.NewRepository(config.DB)
+	taskService := tasks.NewService(taskRepo)
+	taskHandler := tasks.NewHandler(taskService)
 
 	r.Use(middlewares.EnsureJSON())
 
@@ -41,12 +46,12 @@ func main() {
 		protected.POST("/projects", projectHandler.CreateProject)
 		protected.DELETE("/projects/:id", projectHandler.DeleteProject)
 
-		protected.GET("/projects/:id/tasks", tasks.FindTasksByProject)
-		protected.POST("/tasks", tasks.CreateTask)
-		protected.PATCH("/tasks/:id", tasks.UpdateTask)
-		protected.DELETE("/tasks/:id", tasks.DeleteTask)
-		protected.POST("/tasks/:id/take", tasks.TakeTask)
-		protected.POST("/tasks/:id/assign_users", tasks.AssignUsers)
+		protected.GET("/projects/:id/tasks", taskHandler.FindTasksByProject)
+		protected.POST("/tasks", taskHandler.CreateTask)
+		protected.PATCH("/tasks/:id", taskHandler.UpdateTask)
+		protected.DELETE("/tasks/:id", taskHandler.DeleteTask)
+		protected.POST("/tasks/:id/take", taskHandler.TakeTask)
+		protected.POST("/tasks/:id/assign_users", taskHandler.AssignUsers)
 
 		protected.POST("/organizations/invite", auth.AddUserToOrg)
 	}
