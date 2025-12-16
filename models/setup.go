@@ -38,14 +38,14 @@ type User struct {
 }
 
 type Project struct {
-	ID             uint         `gorm:"primaryKey" json:"id"`
-	Name           string       `json:"name"`
-	Description    string       `json:"description"`
-	OrganizationID uint         `json:"organization_id"`
-	Organization   Organization `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
-	Users          []User       `gorm:"many2many:project_users;" json:"users,omitempty"`
-	Tasks          []Task       `gorm:"foreignKey:ProjectID" json:"tasks,omitempty"`
-	CreatedAt      time.Time    `json:"created_at"`
+	ID             uint          `gorm:"primaryKey" json:"id"`
+	Name           string        `json:"name"`
+	Description    string        `json:"description"`
+	OrganizationID uint          `json:"organization_id"`
+	Organization   *Organization `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
+	Users          []User        `gorm:"many2many:project_users;" json:"users,omitempty"`
+	Tasks          []Task        `gorm:"foreignKey:ProjectID" json:"tasks,omitempty"`
+	CreatedAt      time.Time     `json:"created_at"`
 }
 
 type Task struct {

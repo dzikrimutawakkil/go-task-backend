@@ -22,6 +22,11 @@ func main() {
 	config.ConnectDatabase()
 	r := gin.Default()
 
+	// 1. Dependency Injection for Projects
+	projectRepo := projects.NewProjectRepository(config.DB)
+	projectService := projects.NewProjectService(projectRepo)
+	projectHandler := projects.NewProjectHandler(projectService)
+
 	r.Use(middlewares.EnsureJSON())
 
 	// PUBLIC ROUTES
@@ -32,11 +37,9 @@ func main() {
 	protected := r.Group("/")
 	protected.Use(middlewares.RequireAuth)
 	{
-		protected.GET("/projects", projects.FindProjects)
-		protected.POST("/projects", projects.CreateProject)
-		protected.POST("/projects/:id/invite", projects.InviteUser)
-		protected.DELETE("/projects/:id", projects.DeleteProject)
-		protected.GET("/projects/:id/users", projects.FindProjectMembers)
+		protected.GET("/projects", projectHandler.FindProjects)
+		protected.POST("/projects", projectHandler.CreateProject)
+		protected.DELETE("/projects/:id", projectHandler.DeleteProject)
 
 		protected.GET("/projects/:id/tasks", tasks.FindTasksByProject)
 		protected.POST("/tasks", tasks.CreateTask)

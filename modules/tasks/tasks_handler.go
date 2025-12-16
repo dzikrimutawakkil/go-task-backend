@@ -150,32 +150,26 @@ func DeleteTask(c *gin.Context) {
 }
 
 // GET /projects/:id/tasks - Get all tasks for a specific project
+// GET /projects/:id/tasks
 func FindTasksByProject(c *gin.Context) {
 	projectID := c.Param("id")
+	orgID := c.MustGet("org_id").(string) // Get from Header
 
-	// 1. Get logged-in user
-	userContext, _ := c.Get("user")
-	user := userContext.(models.User)
-
-	// 2. Security Check: Does this user have access to this project?
-	// We query the "project_users" join table via the User model
+	// 1. NEW SECURITY CHECK:
+	// Does this Project belong to the current Organization?
 	var project models.Project
-	err := config.DB.Model(&user).Association("Projects").Find(&project, projectID)
-
-	// If project.ID is 0, it means the relation doesn't exist (User isn't in the project)
-	if err != nil || project.ID == 0 {
+	if err := config.DB.Where("id = ? AND organization_id = ?", projectID, orgID).First(&project).Error; err != nil {
 		utils.SendError(c, http.StatusNotFound, "Project not found or access denied")
 		return
 	}
 
-	// 3. Fetch Tasks with Status
+	// 2. Fetch Tasks (Same as before)
 	var tasks []models.Task
-	result := config.DB.Preload("Status").Preload("Assignees").Preload("Priority").Where("project_id = ?", projectID).Find(&tasks)
-
-	if result.Error != nil {
-		utils.SendError(c, http.StatusInternalServerError, "Failed to fetch tasks")
-		return
-	}
+	config.DB.Preload("Status").
+		Preload("Assignees").
+		Preload("Priority").
+		Where("project_id = ?", projectID).
+		Find(&tasks)
 
 	utils.SendSuccess(c, "success", tasks)
 }

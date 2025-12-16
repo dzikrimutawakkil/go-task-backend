@@ -4,3 +4,4 @@
 # Ignore build binaries
 *.exe
 *.dll
+documentation.txt
