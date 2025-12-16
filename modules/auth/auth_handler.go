@@ -6,6 +6,7 @@ import (
 	"gotask-backend/utils"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,35 +14,66 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// Helper: Sign Up a new user
+// POST /signup
 func Signup(c *gin.Context) {
 	var body struct {
-		Email    string
-		Password string
+		Email    string  `json:"email" binding:"required"`
+		Password string  `json:"password" binding:"required"`
+		OrgName  *string `json:"org_name"`
 	}
 
-	if c.Bind(&body) != nil {
+	if c.ShouldBindJSON(&body) != nil {
 		utils.SendError(c, http.StatusBadRequest, "Failed to read body")
 		return
 	}
 
-	// Hash the password
+	// Hash Password
 	hash, err := bcrypt.GenerateFromPassword([]byte(body.Password), 10)
 	if err != nil {
 		utils.SendError(c, http.StatusBadRequest, "Failed to hash password")
 		return
 	}
 
+	// Start Transaction
+	tx := config.DB.Begin()
+
 	// Create User
 	user := models.User{Email: body.Email, Password: string(hash)}
-	result := config.DB.Create(&user)
-
-	if result.Error != nil {
-		utils.SendError(c, http.StatusBadRequest, "Failed to create user")
+	if err := tx.Create(&user).Error; err != nil {
+		tx.Rollback()
+		utils.SendError(c, http.StatusBadRequest, "Failed to create user (Email might exist)")
 		return
 	}
 
-	utils.SendSuccess(c, "User created successfully")
+	// Create Organization (OPTIONAL)
+	var org *models.Organization
+
+	// Logic: Only create if OrgName is NOT nil AND NOT empty
+	if body.OrgName != nil {
+		trimmedName := strings.TrimSpace(*body.OrgName)
+
+		if trimmedName != "" {
+			newOrg := models.Organization{
+				Name:    trimmedName,
+				OwnerID: user.ID,
+				Users:   []models.User{user},
+			}
+
+			if err := tx.Create(&newOrg).Error; err != nil {
+				tx.Rollback()
+				utils.SendError(c, http.StatusBadRequest, "Failed to create organization")
+				return
+			}
+			org = &newOrg
+		}
+	}
+
+	tx.Commit()
+
+	utils.SendSuccess(c, "Signup successful", gin.H{
+		"user":         user,
+		"organization": org,
+	})
 }
 
 // Helper: Login to get the JWT

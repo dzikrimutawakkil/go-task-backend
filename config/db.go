@@ -34,7 +34,10 @@ func ConnectDatabase() {
 		panic("Failed to connect to database!")
 	}
 
-	database.AutoMigrate(&models.User{}, &models.Project{}, &models.Task{}, &models.Status{}, &models.Priority{})
+	database.AutoMigrate(&models.User{},
+		&models.Project{}, &models.Task{},
+		&models.Status{}, &models.Priority{},
+		&models.Organization{})
 
 	DB = database
 

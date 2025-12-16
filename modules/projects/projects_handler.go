@@ -9,22 +9,38 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GET /projects - List projects (Collaborative + Status Preload)
+// GET /projects?org_id=1
 func FindProjects(c *gin.Context) {
 	// 1. Get logged-in user
 	userContext, _ := c.Get("user")
 	user := userContext.(models.User)
 
-	var projects []models.Project
+	// 2. Get Org ID from Query Param
+	orgID := c.Query("org_id")
+	if orgID == "" {
+		utils.SendError(c, http.StatusBadRequest, "organization_id query parameter is required")
+		return
+	}
 
-	// 2. Fetch Projects + Tasks + Status
-	// We use Preload("Tasks.Status") to tell GORM:
-	// "Get the Project -> Get its Tasks -> AND Get the Status for each Task"
+	// 3. SECURITY CHECK: Is user in this Org?
+	var count int64
+	config.DB.Table("organization_users").
+		Where("user_id = ? AND organization_id = ?", user.ID, orgID).
+		Count(&count)
+
+	if count == 0 {
+		utils.SendError(c, http.StatusForbidden, "Access denied to this organization")
+		return
+	}
+
+	// 4. Fetch Projects for this Org (that the user is assigned to)
+	var projects []models.Project
 	err := config.DB.
 		Preload("Tasks.Status").
-		Preload("Tasks.Assignees").           // <--- THE KEY CHANGE
-		Model(&user).Association("Projects"). // Filter: Only projects for this user
-		Find(&projects)
+		Preload("Tasks.Assignees").
+		Preload("Tasks.Priority").
+		Scopes(models.ByOrg(orgID)).
+		Find(&projects).Error
 
 	if err != nil {
 		utils.SendError(c, http.StatusInternalServerError, "Failed to fetch projects")
@@ -34,25 +50,52 @@ func FindProjects(c *gin.Context) {
 	utils.SendSuccess(c, "Success", projects)
 }
 
-// POST /projects - Create a project and add the creator as a member
+// POST /projects
 func CreateProject(c *gin.Context) {
-	var input models.Project
+	// 1. Input now requires OrganizationID
+	var input struct {
+		Name           string `json:"name" binding:"required"`
+		Description    string `json:"description"`
+		OrganizationID uint   `json:"organization_id" binding:"required"` // <--- NEW
+	}
+
 	if err := c.ShouldBindJSON(&input); err != nil {
 		utils.SendError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	// 1. Get logged-in user
+	// 2. Get logged-in user
 	userContext, _ := c.Get("user")
 	user := userContext.(models.User)
 
-	// 2. Add the current user to the project's Users list
-	input.Users = []models.User{user}
+	// 3. SECURITY CHECK: Does this user belong to the requested Org?
+	// We query the join table 'organization_users' to see if a link exists
+	var count int64
+	config.DB.Table("organization_users").
+		Where("user_id = ? AND organization_id = ?", user.ID, input.OrganizationID).
+		Count(&count)
 
-	// 3. Save (GORM will insert into 'projects' AND 'project_users')
-	config.DB.Create(&input)
+	if count == 0 {
+		utils.SendError(c, http.StatusForbidden, "You are not a member of this organization")
+		return
+	}
 
-	utils.SendSuccess(c, "successfull", input)
+	// 4. Create the Project
+	project := models.Project{
+		Name:           input.Name,
+		Description:    input.Description,
+		OrganizationID: input.OrganizationID,
+		Users:          []models.User{user},
+	}
+
+	if err := config.DB.Create(&project).Error; err != nil {
+		utils.SendError(c, http.StatusInternalServerError, "Failed to create project")
+		return
+	}
+
+	config.DB.Preload("Organization").Preload("Users").First(&project, project.ID)
+
+	utils.SendSuccess(c, "Project created successfully", project)
 }
 
 // DELETE /projects/:id
