@@ -5,6 +5,7 @@ import (
 	"gotask-backend/models"
 	"gotask-backend/utils"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,9 +15,11 @@ import (
 func CreateTask(c *gin.Context) {
 	// ... (Input binding and Project validation stay the same) ...
 	var input struct {
-		Title     string `json:"title" binding:"required"`
-		ProjectID uint   `json:"project_id" binding:"required"`
-		StatusID  uint   `json:"status_id"`
+		Title     string     `json:"title" binding:"required"`
+		ProjectID uint       `json:"project_id" binding:"required"`
+		StatusID  uint       `json:"status_id"`
+		StartDate *time.Time `json:"start_date"`
+		EndDate   *time.Time `json:"end_date"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -42,6 +45,8 @@ func CreateTask(c *gin.Context) {
 		Title:     input.Title,
 		ProjectID: input.ProjectID,
 		StatusID:  input.StatusID,
+		StartDate: input.StartDate,
+		EndDate:   input.EndDate,
 	}
 	config.DB.Create(&task)
 
@@ -65,9 +70,11 @@ func UpdateTask(c *gin.Context) {
 	// 2. Define Input with Pointers
 	// Pointers allow us to distinguish between "missing field" (nil) and "empty value"
 	var input struct {
-		Title       *string `json:"title"`        // Pointer to string
-		StatusID    *uint   `json:"status_id"`    // Pointer to int
-		AssigneeIDs []uint  `json:"assignee_ids"` // List of User IDs to REPLACE current assignees
+		Title       *string    `json:"title"`        // Pointer to string
+		StatusID    *uint      `json:"status_id"`    // Pointer to int
+		AssigneeIDs []uint     `json:"assignee_ids"` // List of User IDs to REPLACE current assignees
+		StartDate   *time.Time `json:"start_date"`
+		EndDate     *time.Time `json:"end_date"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -84,6 +91,12 @@ func UpdateTask(c *gin.Context) {
 	}
 	if input.StatusID != nil {
 		updates["status_id"] = *input.StatusID
+	}
+	if input.StartDate != nil {
+		updates["start_date"] = *input.StartDate
+	}
+	if input.EndDate != nil {
+		updates["end_date"] = *input.EndDate
 	}
 
 	// Apply Basic Updates

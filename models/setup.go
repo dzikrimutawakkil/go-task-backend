@@ -30,11 +30,13 @@ type Project struct {
 
 // 2. Updated Task Model
 type Task struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	Title     string    `json:"title"`
-	StatusID  uint      `json:"status_id"`
-	Status    Status    `gorm:"foreignKey:StatusID" json:"status"`
-	ProjectID uint      `json:"project_id"`
-	Assignees []User    `gorm:"many2many:task_users;" json:"assignees"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        uint       `gorm:"primaryKey" json:"id"`
+	Title     string     `json:"title"`
+	StatusID  uint       `json:"status_id"`
+	Status    Status     `gorm:"foreignKey:StatusID" json:"status"`
+	ProjectID uint       `json:"project_id"`
+	Assignees []User     `gorm:"many2many:task_users;" json:"assignees"`
+	StartDate *time.Time `json:"start_date"`
+	EndDate   *time.Time `json:"end_date"`
+	CreatedAt time.Time  `json:"created_at"`
 }
