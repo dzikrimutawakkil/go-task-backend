@@ -21,6 +21,7 @@ type TaskRepository interface {
 	FindUsersByIDs(ids []uint) ([]models.User, error)
 	// Helper to find users by Emails (for bulk assign)
 	FindUsersByEmails(emails []string) ([]models.User, error)
+	CheckProjectAccess(projectID string, orgID string) (bool, error)
 }
 
 type repository struct {
@@ -80,4 +81,16 @@ func (r *repository) FindUsersByEmails(emails []string) ([]models.User, error) {
 	var users []models.User
 	err := r.db.Where("email IN ?", emails).Find(&users).Error
 	return users, err
+}
+
+func (r *repository) CheckProjectAccess(projectID string, orgID string) (bool, error) {
+	var count int64
+	err := r.db.Table("projects").
+		Where("id = ? AND organization_id = ?", projectID, orgID).
+		Count(&count).Error
+
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }

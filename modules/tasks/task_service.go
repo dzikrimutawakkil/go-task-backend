@@ -9,7 +9,7 @@ import (
 
 type TaskService interface {
 	CreateTask(input CreateTaskInput) (*models.Task, error)
-	GetTasksByProject(projectID string) ([]models.Task, error)
+	GetTasksByProject(projectID string, orgID string) ([]models.Task, error)
 	UpdateTask(id string, input UpdateTaskInput) (*models.Task, error)
 	DeleteTask(id string) error
 	AssignUsersByEmail(taskID string, emails []string) (*AssignmentResult, error)
@@ -72,7 +72,17 @@ func (s *taskService) CreateTask(input CreateTaskInput) (*models.Task, error) {
 	return s.repo.FindByID(interfaceToString(task.ID))
 }
 
-func (s *taskService) GetTasksByProject(projectID string) ([]models.Task, error) {
+func (s *taskService) GetTasksByProject(projectID string, orgID string) ([]models.Task, error) {
+	// Call Repo to check Security
+	hasAccess, err := s.repo.CheckProjectAccess(projectID, orgID)
+	if err != nil {
+		return nil, err
+	}
+	if !hasAccess {
+		return nil, errors.New("project not found or access denied")
+	}
+
+	// Fetch Tasks (Safe now)
 	return s.repo.FindByProjectID(projectID)
 }
 

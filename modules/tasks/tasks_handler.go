@@ -21,7 +21,15 @@ func NewHandler(service TaskService) *Handler {
 func (h *Handler) FindTasksByProject(c *gin.Context) {
 	projectID := c.Param("id")
 
-	tasks, err := h.service.GetTasksByProject(projectID)
+	orgIDInterface, exists := c.Get("org_id")
+	if !exists {
+		utils.SendError(c, http.StatusBadRequest, "X-Organization-ID header is required")
+		return
+	}
+	orgID := orgIDInterface.(string)
+
+	tasks, err := h.service.GetTasksByProject(projectID, orgID)
+
 	if err != nil {
 		utils.SendError(c, http.StatusInternalServerError, "Failed to fetch tasks")
 		return
