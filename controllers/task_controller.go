@@ -15,11 +15,12 @@ import (
 func CreateTask(c *gin.Context) {
 	// ... (Input binding and Project validation stay the same) ...
 	var input struct {
-		Title     string     `json:"title" binding:"required"`
-		ProjectID uint       `json:"project_id" binding:"required"`
-		StatusID  uint       `json:"status_id"`
-		StartDate *time.Time `json:"start_date"`
-		EndDate   *time.Time `json:"end_date"`
+		Title      string     `json:"title" binding:"required"`
+		ProjectID  uint       `json:"project_id" binding:"required"`
+		StatusID   uint       `json:"status_id"`
+		PriorityID uint       `json:"priority_id"`
+		StartDate  *time.Time `json:"start_date"`
+		EndDate    *time.Time `json:"end_date"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -40,17 +41,25 @@ func CreateTask(c *gin.Context) {
 		}
 	}
 
+	if input.PriorityID == 0 {
+		var medium models.Priority
+		if err := config.DB.Where("name = ?", "Medium").First(&medium).Error; err == nil {
+			input.PriorityID = medium.ID
+		}
+	}
+
 	// 3. Create the Task
 	task := models.Task{
-		Title:     input.Title,
-		ProjectID: input.ProjectID,
-		StatusID:  input.StatusID,
-		StartDate: input.StartDate,
-		EndDate:   input.EndDate,
+		Title:      input.Title,
+		ProjectID:  input.ProjectID,
+		StatusID:   input.StatusID,
+		PriorityID: input.PriorityID,
+		StartDate:  input.StartDate,
+		EndDate:    input.EndDate,
 	}
 	config.DB.Create(&task)
 
-	config.DB.Preload("Status").First(&task, task.ID)
+	config.DB.Preload("Status").Preload("Priority").First(&task, task.ID)
 
 	utils.SendSuccess(c, "Task created successfully", task)
 }
@@ -70,9 +79,10 @@ func UpdateTask(c *gin.Context) {
 	// 2. Define Input with Pointers
 	// Pointers allow us to distinguish between "missing field" (nil) and "empty value"
 	var input struct {
-		Title       *string    `json:"title"`        // Pointer to string
-		StatusID    *uint      `json:"status_id"`    // Pointer to int
-		AssigneeIDs []uint     `json:"assignee_ids"` // List of User IDs to REPLACE current assignees
+		Title       *string    `json:"title"`
+		StatusID    *uint      `json:"status_id"`
+		PriorityID  *uint      `json:"priority_id"`
+		AssigneeIDs []uint     `json:"assignee_ids"`
 		StartDate   *time.Time `json:"start_date"`
 		EndDate     *time.Time `json:"end_date"`
 	}
@@ -91,6 +101,9 @@ func UpdateTask(c *gin.Context) {
 	}
 	if input.StatusID != nil {
 		updates["status_id"] = *input.StatusID
+	}
+	if input.PriorityID != nil {
+		updates["priority_id"] = *input.PriorityID
 	}
 	if input.StartDate != nil {
 		updates["start_date"] = *input.StartDate
@@ -116,7 +129,7 @@ func UpdateTask(c *gin.Context) {
 	}
 
 	// 5. Reload Task with all details (Status + Assignees)
-	config.DB.Preload("Status").Preload("Assignees").First(&task, task.ID)
+	config.DB.Preload("Status").Preload("Assignees").Preload("Priority").First(&task, task.ID)
 
 	utils.SendSuccess(c, "Task updated successfully", task)
 }
@@ -159,7 +172,7 @@ func FindTasksByProject(c *gin.Context) {
 
 	// 3. Fetch Tasks with Status
 	var tasks []models.Task
-	result := config.DB.Preload("Status").Preload("Assignees").Where("project_id = ?", projectID).Find(&tasks)
+	result := config.DB.Preload("Status").Preload("Assignees").Preload("Priority").Where("project_id = ?", projectID).Find(&tasks)
 
 	if result.Error != nil {
 		utils.SendError(c, http.StatusInternalServerError, "Failed to fetch tasks")

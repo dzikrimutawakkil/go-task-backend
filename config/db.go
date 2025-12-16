@@ -15,7 +15,6 @@ import (
 var DB *gorm.DB
 
 func ConnectDatabase() {
-	// ... (Your existing .env loading code) ...
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
@@ -35,18 +34,16 @@ func ConnectDatabase() {
 		panic("Failed to connect to database!")
 	}
 
-	// 1. AutoMigrate the new Status struct
-	database.AutoMigrate(&models.User{}, &models.Project{}, &models.Task{}, &models.Status{})
+	database.AutoMigrate(&models.User{}, &models.Project{}, &models.Task{}, &models.Status{}, &models.Priority{})
 
 	DB = database
 
-	// 2. Run Seeder
 	seedStatuses()
+	seedPriority()
 
 	fmt.Println("Database connected and seeded!")
 }
 
-// 3. Seeder Logic
 func seedStatuses() {
 	statuses := []string{"Todo", "In Progress", "Done", "Pending", "Canceled"}
 
@@ -54,7 +51,22 @@ func seedStatuses() {
 		var status models.Status
 		slug := strings.ToLower(strings.ReplaceAll(name, " ", "_"))
 
-		// Create status if it doesn't exist
 		DB.FirstOrCreate(&status, models.Status{Name: name, Slug: slug})
+	}
+}
+
+func seedPriority() {
+	priorities := []models.Priority{
+		{Name: "Low", Level: 1, Color: "#808080"},    // Gray
+		{Name: "Medium", Level: 2, Color: "#0000FF"}, // Blue
+		{Name: "High", Level: 3, Color: "#FFA500"},   // Orange
+		{Name: "Urgent", Level: 4, Color: "#FF0000"}, // Red
+	}
+
+	for _, p := range priorities {
+		var exists models.Priority
+		if DB.Where("name = ?", p.Name).First(&exists).Error != nil {
+			DB.Create(&p)
+		}
 	}
 }

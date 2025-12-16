@@ -4,11 +4,17 @@ import (
 	"time"
 )
 
-// 1. New Status Model
+type Priority struct {
+	ID    uint   `gorm:"primaryKey" json:"id"`
+	Name  string `gorm:"unique" json:"name"`
+	Level int    `json:"level"`
+	Color string `json:"color"`
+}
+
 type Status struct {
 	ID   uint   `gorm:"primaryKey" json:"id"`
-	Name string `gorm:"unique" json:"name"` // e.g., "Todo"
-	Slug string `gorm:"unique" json:"slug"` // e.g., "todo"
+	Name string `gorm:"unique" json:"name"`
+	Slug string `gorm:"unique" json:"slug"`
 }
 
 type User struct {
@@ -28,12 +34,16 @@ type Project struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
-// 2. Updated Task Model
 type Task struct {
-	ID        uint       `gorm:"primaryKey" json:"id"`
-	Title     string     `json:"title"`
-	StatusID  uint       `json:"status_id"`
-	Status    Status     `gorm:"foreignKey:StatusID" json:"status"`
+	ID    uint   `gorm:"primaryKey" json:"id"`
+	Title string `json:"title"`
+
+	StatusID uint   `json:"status_id"`
+	Status   Status `gorm:"foreignKey:StatusID" json:"status"`
+
+	PriorityID uint     `json:"priority_id"`
+	Priority   Priority `gorm:"foreignKey:PriorityID" json:"priority"`
+
 	ProjectID uint       `json:"project_id"`
 	Assignees []User     `gorm:"many2many:task_users;" json:"assignees"`
 	StartDate *time.Time `json:"start_date"`
