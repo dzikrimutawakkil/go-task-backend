@@ -28,9 +28,9 @@ func main() {
 	projectHandler := projects.NewProjectHandler(projectService)
 
 	// Dependency Injection for Tasks
-	taskRepo := tasks.NewRepository(config.DB)
-	taskService := tasks.NewService(taskRepo)
-	taskHandler := tasks.NewHandler(taskService)
+	taskRepo := tasks.NewTaskRepository(config.DB)
+	taskService := tasks.NewTaskService(taskRepo)
+	taskHandler := tasks.NewTaskHandler(taskService)
 
 	r.Use(middlewares.EnsureJSON())
 
