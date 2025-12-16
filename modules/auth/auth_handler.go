@@ -6,6 +6,7 @@ import (
 	"gotask-backend/utils"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -131,11 +132,22 @@ func AddUserToOrg(c *gin.Context) {
 	userContext, _ := c.Get("user")
 	currentUser := userContext.(models.User)
 
+	orgIDInterface, orgExists := c.Get("org_id")
+	if !orgExists {
+		utils.SendError(c, http.StatusBadRequest, "X-Organization-ID header is required for this endpoint")
+		return
+	}
+	orgIDStr := orgIDInterface.(string)
+	orgID64, err := strconv.ParseUint(orgIDStr, 10, 64)
+	if err != nil {
+		utils.SendError(c, http.StatusBadRequest, "Invalid Organization ID format")
+		return
+	}
+	orgID := uint(orgID64)
+
 	var body struct {
 		Email string `json:"email" binding:"required"`
-		OrgID uint   `json:"org_id" binding:"required"`
 	}
-
 	if c.ShouldBindJSON(&body) != nil {
 		utils.SendError(c, http.StatusBadRequest, "Invalid body")
 		return
@@ -144,7 +156,7 @@ func AddUserToOrg(c *gin.Context) {
 	// 2. SECURITY: Check if Current User is in the Org
 	var count int64
 	config.DB.Table("organization_users").
-		Where("user_id = ? AND organization_id = ?", currentUser.ID, body.OrgID).
+		Where("user_id = ? AND organization_id = ?", currentUser.ID, orgIDStr).
 		Count(&count)
 
 	if count == 0 {
@@ -162,7 +174,7 @@ func AddUserToOrg(c *gin.Context) {
 	// 4. Check if they are ALREADY a member
 	var exists int64
 	config.DB.Table("organization_users").
-		Where("user_id = ? AND organization_id = ?", userToAdd.ID, body.OrgID).
+		Where("user_id = ? AND organization_id = ?", userToAdd.ID, orgIDStr).
 		Count(&exists)
 
 	if exists > 0 {
@@ -172,7 +184,7 @@ func AddUserToOrg(c *gin.Context) {
 
 	// 5. Add them to the Organization
 	var org models.Organization
-	org.ID = body.OrgID
+	org.ID = orgID
 
 	if err := config.DB.Model(&org).Association("Users").Append(&userToAdd); err != nil {
 		utils.SendError(c, http.StatusInternalServerError, "Failed to add user")

@@ -9,31 +9,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GET /projects?org_id=1
+// GET /projects
 func FindProjects(c *gin.Context) {
-	// 1. Get logged-in user
-	userContext, _ := c.Get("user")
-	user := userContext.(models.User)
-
-	// 2. Get Org ID from Query Param
-	orgID := c.Query("org_id")
-	if orgID == "" {
-		utils.SendError(c, http.StatusBadRequest, "organization_id query parameter is required")
+	// 1. Get Org ID from Context (Saved by Middleware)
+	// We check if it exists because the middleware only sets it if the header was sent.
+	orgIDInterface, exists := c.Get("org_id")
+	if !exists {
+		utils.SendError(c, http.StatusBadRequest, "X-Organization-ID header is required for this endpoint")
 		return
 	}
+	orgID := orgIDInterface.(string)
 
-	// 3. SECURITY CHECK: Is user in this Org?
-	var count int64
-	config.DB.Table("organization_users").
-		Where("user_id = ? AND organization_id = ?", user.ID, orgID).
-		Count(&count)
-
-	if count == 0 {
-		utils.SendError(c, http.StatusForbidden, "Access denied to this organization")
-		return
-	}
-
-	// 4. Fetch Projects for this Org (that the user is assigned to)
+	// 2. Fetch Projects
 	var projects []models.Project
 	err := config.DB.
 		Preload("Tasks.Status").
