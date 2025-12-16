@@ -1,4 +1,4 @@
-package controllers
+package tasks
 
 import (
 	"gotask-backend/config"
@@ -10,8 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// POST /tasks
-// POST /tasks
 func CreateTask(c *gin.Context) {
 	// ... (Input binding and Project validation stay the same) ...
 	var input struct {

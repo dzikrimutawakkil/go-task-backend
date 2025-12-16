@@ -2,8 +2,12 @@ package main
 
 import (
 	"gotask-backend/config"
-	"gotask-backend/controllers"
 	"gotask-backend/middlewares"
+
+	"gotask-backend/modules/auth"
+	"gotask-backend/modules/projects"
+	"gotask-backend/modules/tasks"
+
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -21,25 +25,25 @@ func main() {
 	r.Use(middlewares.EnsureJSON())
 
 	// PUBLIC ROUTES
-	r.POST("/signup", controllers.Signup)
-	r.POST("/login", controllers.Login)
+	r.POST("/signup", auth.Signup)
+	r.POST("/login", auth.Login)
 
 	// PROTECTED ROUTES
 	protected := r.Group("/")
 	protected.Use(middlewares.RequireAuth)
 	{
-		protected.GET("/projects", controllers.FindProjects)
-		protected.POST("/projects", controllers.CreateProject)
-		protected.POST("/projects/:id/invite", controllers.InviteUser)
-		protected.DELETE("/projects/:id", controllers.DeleteProject)
-		protected.GET("/projects/:id/users", controllers.FindProjectMembers)
+		protected.GET("/projects", projects.FindProjects)
+		protected.POST("/projects", projects.CreateProject)
+		protected.POST("/projects/:id/invite", projects.InviteUser)
+		protected.DELETE("/projects/:id", projects.DeleteProject)
+		protected.GET("/projects/:id/users", projects.FindProjectMembers)
 
-		protected.GET("/projects/:id/tasks", controllers.FindTasksByProject)
-		protected.POST("/tasks", controllers.CreateTask)
-		protected.PATCH("/tasks/:id", controllers.UpdateTask)
-		protected.DELETE("/tasks/:id", controllers.DeleteTask)
-		protected.POST("/tasks/:id/take", controllers.TakeTask)
-		protected.POST("/tasks/:id/assign_users", controllers.AssignUsers)
+		protected.GET("/projects/:id/tasks", tasks.FindTasksByProject)
+		protected.POST("/tasks", tasks.CreateTask)
+		protected.PATCH("/tasks/:id", tasks.UpdateTask)
+		protected.DELETE("/tasks/:id", tasks.DeleteTask)
+		protected.POST("/tasks/:id/take", tasks.TakeTask)
+		protected.POST("/tasks/:id/assign_users", tasks.AssignUsers)
 	}
 
 	r.Run(":8080")

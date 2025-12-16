@@ -1,4 +1,4 @@
-package controllers
+package projects
 
 import (
 	"gotask-backend/config"
