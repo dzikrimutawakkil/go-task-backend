@@ -5,6 +5,7 @@ import (
 	"gotask-backend/middlewares"
 
 	"gotask-backend/modules/auth"
+	"gotask-backend/modules/organizations"
 	"gotask-backend/modules/projects"
 	"gotask-backend/modules/tasks"
 
@@ -22,10 +23,15 @@ func main() {
 	config.ConnectDatabase()
 	r := gin.Default()
 
-	// Auth Module
+	// Dependency Injection for Organization
+	orgRepo := organizations.NewOrganizationRepository(config.DB)
+	orgService := organizations.NewOrganizationService(orgRepo)
+	orgHandler := organizations.NewOrganizationHandler(orgService)
+
+	// Dependency Injection for Auth
 	authRepo := auth.NewAuthRepository(config.DB)
 	authService := auth.NewAuthService(authRepo)
-	authHandler := auth.NewAuthHandler(authService)
+	authHandler := auth.NewAuthHandler(authService, orgService)
 
 	// Dependency Injection for Projects
 	projectRepo := projects.NewProjectRepository(config.DB)
@@ -58,7 +64,7 @@ func main() {
 		protected.POST("/tasks/:id/take", taskHandler.TakeTask)
 		protected.POST("/tasks/:id/assign_users", taskHandler.AssignUsers)
 
-		protected.POST("/organizations/invite", authHandler.AddUserToOrg)
+		protected.POST("/organizations/invite", orgHandler.InviteMember)
 	}
 
 	r.Run(":8080")
