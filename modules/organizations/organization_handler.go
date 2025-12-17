@@ -78,9 +78,15 @@ func (h *Handler) InviteMember(c *gin.Context) {
 	utils.SendSuccess(c, "Member added successfully")
 }
 
+// GET /organizations/members
 func (h *Handler) GetMembers(c *gin.Context) {
-	// 1. Get Org ID from Header
-	orgIDStr := c.MustGet("org_id").(string)
+	orgIDInterface, exists := c.Get("org_id")
+	if !exists {
+		utils.SendError(c, http.StatusBadRequest, "X-Organization-ID header is required")
+		return
+	}
+	orgIDStr := orgIDInterface.(string)
+
 	orgID, _ := strconv.ParseUint(orgIDStr, 10, 64)
 
 	// 2. Fetch
