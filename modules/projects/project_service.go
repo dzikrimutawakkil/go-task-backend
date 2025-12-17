@@ -35,9 +35,6 @@ func (s *projectService) CreateProject(input CreateProjectInput, userID uint) (*
 		Name:           input.Name,
 		Description:    input.Description,
 		OrganizationID: input.OrganizationID,
-		// We add the creator to 'Users' just for record-keeping (e.g. "Project Lead")
-		// But it does not control access anymore.
-		Users: []models.User{{ID: userID}},
 	}
 
 	if err := s.repo.Create(&project); err != nil {

@@ -1,7 +1,6 @@
 package tasks
 
 import (
-	"gotask-backend/models"
 	"gotask-backend/utils"
 	"net/http"
 	"time"
@@ -118,48 +117,4 @@ func (h *Handler) DeleteTask(c *gin.Context) {
 	}
 
 	utils.SendSuccess(c, "Task deleted successfully")
-}
-
-// POST /tasks/:id/take (Assign self)
-func (h *Handler) TakeTask(c *gin.Context) {
-	taskID := c.Param("id")
-
-	userContext, _ := c.Get("user")
-	user := userContext.(models.User)
-
-	// Reuse the AssignUsersByEmail service logic
-	_, err := h.service.AssignUsersByEmail(taskID, []string{user.Email})
-	if err != nil {
-		utils.SendError(c, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	utils.SendSuccess(c, "Task assigned to you successfully")
-}
-
-// POST /tasks/:id/assign_users
-func (h *Handler) AssignUsers(c *gin.Context) {
-	taskID := c.Param("id")
-
-	var req struct {
-		Emails []string `json:"emails" binding:"required"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.SendError(c, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	result, err := h.service.AssignUsersByEmail(taskID, req.Emails)
-	if err != nil {
-		utils.SendError(c, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	msg := "Users assigned successfully"
-	if len(result.MissingEmails) > 0 {
-		msg = "Some users were assigned, but some emails were not found"
-	}
-
-	utils.SendSuccess(c, msg, result)
 }

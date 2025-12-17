@@ -61,9 +61,8 @@ func main() {
 		protected.POST("/tasks", taskHandler.CreateTask)
 		protected.PATCH("/tasks/:id", taskHandler.UpdateTask)
 		protected.DELETE("/tasks/:id", taskHandler.DeleteTask)
-		protected.POST("/tasks/:id/take", taskHandler.TakeTask)
-		protected.POST("/tasks/:id/assign_users", taskHandler.AssignUsers)
 
+		protected.POST("/organizations", orgHandler.CreateOrganization)
 		protected.POST("/organizations/invite", orgHandler.InviteMember)
 	}
 

@@ -43,7 +43,6 @@ type Project struct {
 	Description    string        `json:"description"`
 	OrganizationID uint          `json:"organization_id"`
 	Organization   *Organization `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
-	Users          []User        `gorm:"many2many:project_users;" json:"users,omitempty"`
 	Tasks          []Task        `gorm:"foreignKey:ProjectID" json:"tasks,omitempty"`
 	CreatedAt      time.Time     `json:"created_at"`
 }

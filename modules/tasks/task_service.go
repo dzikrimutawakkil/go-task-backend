@@ -12,7 +12,6 @@ type TaskService interface {
 	GetTasksByProject(projectID string, orgID string) ([]models.Task, error)
 	UpdateTask(id string, input UpdateTaskInput) (*models.Task, error)
 	DeleteTask(id string) error
-	AssignUsersByEmail(taskID string, emails []string) (*AssignmentResult, error)
 }
 
 type taskService struct {
@@ -39,11 +38,6 @@ type UpdateTaskInput struct {
 	AssigneeIDs []uint
 	StartDate   *time.Time
 	EndDate     *time.Time
-}
-
-type AssignmentResult struct {
-	AssignedCount int
-	MissingEmails []string
 }
 
 func (s *taskService) CreateTask(input CreateTaskInput) (*models.Task, error) {
@@ -132,38 +126,6 @@ func (s *taskService) DeleteTask(id string) error {
 		return errors.New("task not found")
 	}
 	return s.repo.Delete(task)
-}
-
-func (s *taskService) AssignUsersByEmail(taskID string, emails []string) (*AssignmentResult, error) {
-	task, err := s.repo.FindByID(taskID)
-	if err != nil {
-		return nil, errors.New("task not found")
-	}
-
-	users, err := s.repo.FindUsersByEmails(emails)
-	if err != nil {
-		return nil, err
-	}
-
-	// Logic to find missing emails
-	foundMap := make(map[string]bool)
-	for _, u := range users {
-		foundMap[u.Email] = true
-	}
-
-	var missing []string
-	for _, e := range emails {
-		if !foundMap[e] {
-			missing = append(missing, e)
-		}
-	}
-
-	s.repo.AssignUsers(task, users)
-
-	return &AssignmentResult{
-		AssignedCount: len(users),
-		MissingEmails: missing,
-	}, nil
 }
 
 // Helper function to convert uint ID to string
