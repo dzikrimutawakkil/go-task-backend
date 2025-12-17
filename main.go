@@ -3,25 +3,28 @@ package main
 import (
 	"gotask-backend/config"
 	"gotask-backend/middlewares"
+	"log"
 
 	"gotask-backend/modules/auth"
 	"gotask-backend/modules/organizations"
 	"gotask-backend/modules/projects"
 	"gotask-backend/modules/tasks"
 
-	"os"
-
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	// Set a default secret if not in .env (FOR DEV ONLY)
-	if os.Getenv("SECRET_KEY") == "" {
-		os.Setenv("SECRET_KEY", "supersecretkey")
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, using system env variables")
 	}
 
 	config.ConnectDatabase()
 	r := gin.Default()
+
+	// Apply Middleware (First thing!)
+	r.Use(middlewares.CORSMiddleware())
+	r.Use(middlewares.EnsureJSON())
 
 	// Dependency Injection for Organization
 	orgRepo := organizations.NewOrganizationRepository(config.DB)
@@ -42,8 +45,6 @@ func main() {
 	taskRepo := tasks.NewTaskRepository(config.DB)
 	taskService := tasks.NewTaskService(taskRepo)
 	taskHandler := tasks.NewTaskHandler(taskService)
-
-	r.Use(middlewares.EnsureJSON())
 
 	// PUBLIC ROUTES
 	r.POST("/signup", authHandler.Signup)
