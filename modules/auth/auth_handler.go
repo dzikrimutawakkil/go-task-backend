@@ -1,75 +1,45 @@
 package auth
 
 import (
-	"gotask-backend/config"
 	"gotask-backend/models"
 	"gotask-backend/utils"
 	"net/http"
-	"os"
-	"strconv"
-	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/crypto/bcrypt"
 )
 
+type AuthHandler struct {
+	service AuthService
+}
+
+func NewAuthHandler(service AuthService) *AuthHandler {
+	return &AuthHandler{service: service}
+}
+
 // POST /signup
-func Signup(c *gin.Context) {
-	var body struct {
-		Email    string  `json:"email" binding:"required"`
-		Password string  `json:"password" binding:"required"`
-		OrgName  *string `json:"org_name"`
+func (h *AuthHandler) Signup(c *gin.Context) {
+	var req struct {
+		Email    string `json:"email" binding:"required"`
+		Password string `json:"password" binding:"required"`
+		OrgName  string `json:"org_name"`
 	}
 
-	if c.ShouldBindJSON(&body) != nil {
-		utils.SendError(c, http.StatusBadRequest, "Failed to read body")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.SendError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	// Hash Password
-	hash, err := bcrypt.GenerateFromPassword([]byte(body.Password), 10)
+	input := SignupInput{
+		Email:    req.Email,
+		Password: req.Password,
+		OrgName:  req.OrgName,
+	}
+
+	user, org, err := h.service.Signup(input)
 	if err != nil {
-		utils.SendError(c, http.StatusBadRequest, "Failed to hash password")
+		utils.SendError(c, http.StatusBadRequest, err.Error())
 		return
 	}
-
-	// Start Transaction
-	tx := config.DB.Begin()
-
-	// Create User
-	user := models.User{Email: body.Email, Password: string(hash)}
-	if err := tx.Create(&user).Error; err != nil {
-		tx.Rollback()
-		utils.SendError(c, http.StatusBadRequest, "Failed to create user (Email might exist)")
-		return
-	}
-
-	// Create Organization (OPTIONAL)
-	var org *models.Organization
-
-	// Logic: Only create if OrgName is NOT nil AND NOT empty
-	if body.OrgName != nil {
-		trimmedName := strings.TrimSpace(*body.OrgName)
-
-		if trimmedName != "" {
-			newOrg := models.Organization{
-				Name:    trimmedName,
-				OwnerID: user.ID,
-				Users:   []models.User{user},
-			}
-
-			if err := tx.Create(&newOrg).Error; err != nil {
-				tx.Rollback()
-				utils.SendError(c, http.StatusBadRequest, "Failed to create organization")
-				return
-			}
-			org = &newOrg
-		}
-	}
-
-	tx.Commit()
 
 	utils.SendSuccess(c, "Signup successful", gin.H{
 		"user":         user,
@@ -77,117 +47,52 @@ func Signup(c *gin.Context) {
 	})
 }
 
-// Helper: Login to get the JWT
-func Login(c *gin.Context) {
-	var body struct {
-		Email    string
-		Password string
+// POST /login
+func (h *AuthHandler) Login(c *gin.Context) {
+	var req struct {
+		Email    string `json:"email" binding:"required"`
+		Password string `json:"password" binding:"required"`
 	}
 
-	if c.Bind(&body) != nil {
-		utils.SendError(c, http.StatusBadRequest, "Failed to read body")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.SendError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	// 1. Look up requested user
-	var user models.User
-	config.DB.First(&user, "email = ?", body.Email)
-
-	if user.ID == 0 {
-		utils.SendError(c, http.StatusBadRequest, "Invalid email or password")
-		return
-	}
-
-	// 2. Compare sent password with saved user password hash
-	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(body.Password))
+	token, err := h.service.Login(LoginInput{Email: req.Email, Password: req.Password})
 	if err != nil {
-		utils.SendError(c, http.StatusBadRequest, "Invalid email or password")
+		utils.SendError(c, http.StatusUnauthorized, err.Error())
 		return
 	}
 
-	// 3. Generate JWT Token
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub": user.ID,                                    // Subject (User ID)
-		"exp": time.Now().Add(time.Hour * 24 * 30).Unix(), // Expiration (30 days)
-	})
-
-	// Sign and get the complete encoded token as a string using the secret
-	// Note: In production, store "SECRET_KEY" in your .env file!
-	tokenString, err := token.SignedString([]byte(os.Getenv("SECRET_KEY")))
-
-	if err != nil {
-		utils.SendError(c, http.StatusBadRequest, "Failed to create token")
-		return
-	}
-
-	// 4. Send it back
-	utils.SendSuccess(c, "Login successful", gin.H{
-		"token": tokenString,
-	})
+	utils.SendSuccess(c, "Login successful", gin.H{"token": token})
 }
 
 // POST /organizations/invite
-func AddUserToOrg(c *gin.Context) {
-	// 1. Get Current User
-	userContext, _ := c.Get("user")
-	currentUser := userContext.(models.User)
+func (h *AuthHandler) AddUserToOrg(c *gin.Context) {
+	// 1. Get User
+	user := c.MustGet("user").(models.User)
 
-	orgIDInterface, orgExists := c.Get("org_id")
-	if !orgExists {
-		utils.SendError(c, http.StatusBadRequest, "X-Organization-ID header is required for this endpoint")
-		return
-	}
-	orgIDStr := orgIDInterface.(string)
-	orgID64, err := strconv.ParseUint(orgIDStr, 10, 64)
-	if err != nil {
-		utils.SendError(c, http.StatusBadRequest, "Invalid Organization ID format")
-		return
-	}
-	orgID := uint(orgID64)
+	// 2. Get Org ID from Header (validated by middleware)
+	orgIDStr := c.MustGet("org_id").(string)
 
-	var body struct {
+	var req struct {
 		Email string `json:"email" binding:"required"`
 	}
-	if c.ShouldBindJSON(&body) != nil {
-		utils.SendError(c, http.StatusBadRequest, "Invalid body")
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.SendError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	// 2. SECURITY: Check if Current User is in the Org
-	var count int64
-	config.DB.Table("organization_users").
-		Where("user_id = ? AND organization_id = ?", currentUser.ID, orgIDStr).
-		Count(&count)
+	// 3. Call Service
+	// Note: We pass orgIDStr directly. In the Service, update the logic to parse it or use string.
+	// For this code to work with the Service provided above, ensure Service accepts string or converts.
+	// I'll define the final Service Method below to match.
 
-	if count == 0 {
-		utils.SendError(c, http.StatusForbidden, "You are not a member of this organization")
-		return
-	}
-
-	// 3. Find the User they want to invite
-	var userToAdd models.User
-	if err := config.DB.Where("email = ?", body.Email).First(&userToAdd).Error; err != nil {
-		utils.SendError(c, http.StatusNotFound, "User with this email not found")
-		return
-	}
-
-	// 4. Check if they are ALREADY a member
-	var exists int64
-	config.DB.Table("organization_users").
-		Where("user_id = ? AND organization_id = ?", userToAdd.ID, orgIDStr).
-		Count(&exists)
-
-	if exists > 0 {
-		utils.SendError(c, http.StatusBadRequest, "User is already in the organization")
-		return
-	}
-
-	// 5. Add them to the Organization
-	var org models.Organization
-	org.ID = orgID
-
-	if err := config.DB.Model(&org).Association("Users").Append(&userToAdd); err != nil {
-		utils.SendError(c, http.StatusInternalServerError, "Failed to add user")
+	err := h.service.AddUserToOrg(user.ID, orgIDStr, req.Email)
+	if err != nil {
+		utils.SendError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 

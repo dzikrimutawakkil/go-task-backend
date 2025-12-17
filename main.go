@@ -22,6 +22,11 @@ func main() {
 	config.ConnectDatabase()
 	r := gin.Default()
 
+	// Auth Module
+	authRepo := auth.NewAuthRepository(config.DB)
+	authService := auth.NewAuthService(authRepo)
+	authHandler := auth.NewAuthHandler(authService)
+
 	// Dependency Injection for Projects
 	projectRepo := projects.NewProjectRepository(config.DB)
 	projectService := projects.NewProjectService(projectRepo)
@@ -35,8 +40,8 @@ func main() {
 	r.Use(middlewares.EnsureJSON())
 
 	// PUBLIC ROUTES
-	r.POST("/signup", auth.Signup)
-	r.POST("/login", auth.Login)
+	r.POST("/signup", authHandler.Signup)
+	r.POST("/login", authHandler.Login)
 
 	// PROTECTED ROUTES
 	protected := r.Group("/")
@@ -53,7 +58,7 @@ func main() {
 		protected.POST("/tasks/:id/take", taskHandler.TakeTask)
 		protected.POST("/tasks/:id/assign_users", taskHandler.AssignUsers)
 
-		protected.POST("/organizations/invite", auth.AddUserToOrg)
+		protected.POST("/organizations/invite", authHandler.AddUserToOrg)
 	}
 
 	r.Run(":8080")
