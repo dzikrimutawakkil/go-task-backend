@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  # Service 1: Your Go Application
+  app:
+    build: .             # Build using the Dockerfile in the current directory
+    ports:
+      - "8080:8080"      # Map host port 8080 to container port 8080
+    restart: always
+    depends_on:
+      - db               # Wait for the database to start first
+    environment:
+      - DB_HOST=db
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - DB_PORT=${DB_PORT}
+      - SECRET_KEY=${SECRET_KEY}    
+
+  # Service 2: The Database
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    ports:
+      - "5432:5432"      # Optional: Allows you to connect via pgAdmin from your host
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Persist data even if container stops
+
+# Define the storage volume for the DB
+volumes:
+  postgres_data:
