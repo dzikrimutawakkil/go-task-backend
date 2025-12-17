@@ -1,8 +1,6 @@
 package auth
 
 import (
-	"gotask-backend/models"
-	"gotask-backend/modules/organizations"
 	"gotask-backend/utils"
 	"net/http"
 
@@ -11,20 +9,17 @@ import (
 
 type Handler struct {
 	authService AuthService
-	orgService  organizations.OrganizationService
 }
 
-// NewHandler now accepts BOTH services to coordinate them
-func NewAuthHandler(authS AuthService, orgS organizations.OrganizationService) *Handler {
-	return &Handler{authService: authS, orgService: orgS}
+func NewAuthHandler(authS AuthService) *Handler {
+	return &Handler{authService: authS}
 }
 
 // POST /signup
 func (h *Handler) Signup(c *gin.Context) {
 	var req struct {
-		Email    string  `json:"email" binding:"required"`
-		Password string  `json:"password" binding:"required"`
-		OrgName  *string `json:"org_name"`
+		Email    string `json:"email" binding:"required"`
+		Password string `json:"password" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -32,7 +27,7 @@ func (h *Handler) Signup(c *gin.Context) {
 		return
 	}
 
-	// 1. Create User (Delegated to Auth Service)
+	// Create User
 	user, err := h.authService.Signup(SignupInput{
 		Email:    req.Email,
 		Password: req.Password,
@@ -42,22 +37,8 @@ func (h *Handler) Signup(c *gin.Context) {
 		return
 	}
 
-	// 2. Create Organization (Delegated to Organization Service)
-	// This keeps Auth module clean from Org logic
-	var org *models.Organization
-	if req.OrgName != nil {
-		newOrg, err := h.orgService.CreateOrganization(*req.OrgName, user.ID)
-		if err != nil {
-			// Note: In a real production app, you might want to rollback the User creation here.
-			utils.SendError(c, http.StatusInternalServerError, "User created but failed to create Organization")
-			return
-		}
-		org = newOrg
-	}
-
 	utils.SendSuccess(c, "Signup successful", gin.H{
-		"user":         user,
-		"organization": org,
+		"user": user,
 	})
 }
 

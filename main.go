@@ -34,7 +34,7 @@ func main() {
 	// Dependency Injection for Auth
 	authRepo := auth.NewAuthRepository(config.DB)
 	authService := auth.NewAuthService(authRepo)
-	authHandler := auth.NewAuthHandler(authService, orgService)
+	authHandler := auth.NewAuthHandler(authService)
 
 	// Dependency Injection for Projects
 	projectRepo := projects.NewProjectRepository(config.DB)
