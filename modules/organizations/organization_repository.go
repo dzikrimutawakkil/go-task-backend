@@ -29,20 +29,22 @@ func (r *organizationRepository) Create(org *models.Organization) error {
 
 func (r *organizationRepository) FindByID(id uint) (*models.Organization, error) {
 	var org models.Organization
-	// Preload Users to see members, or omit if not needed for basic checks
-	err := r.db.Preload("Users").First(&org, id).Error
+	// HAPUS Preload("Users").
+	// Kita tidak ingin mengambil data user secara otomatis saat mengambil data organisasi.
+	err := r.db.First(&org, id).Error
 	return &org, err
 }
 
 func (r *organizationRepository) AddMember(orgID uint, userID uint) error {
-	// Use GORM Association to append user to the organization
-	var org models.Organization
-	org.ID = orgID
+	// GANTI Association dengan Insert Manual ke tabel pivot
+	// Asumsi tabel pivot bernama "organization_users" dengan kolom "organization_id" dan "user_id"
 
-	var user models.User
-	user.ID = userID
-
-	return r.db.Model(&org).Association("Users").Append(&user)
+	// Kita gunakan Exec raw SQL atau Map Create agar tidak butuh struct model pivot
+	// Cara aman dengan GORM map creation:
+	return r.db.Table("organization_users").Create(map[string]interface{}{
+		"organization_id": orgID,
+		"user_id":         userID,
+	}).Error
 }
 
 func (r *organizationRepository) IsMember(userID uint, orgID uint) (bool, error) {
@@ -61,7 +63,9 @@ func (r *organizationRepository) FindUserByEmail(email string) (*models.User, er
 
 func (r *organizationRepository) FindMembers(orgID uint) ([]models.User, error) {
 	var users []models.User
-	// We join the organization_users table to find the members
+	// Fungsi ini masih melakukan JOIN ke tabel Users.
+	// Dalam Microservices murni, seharusnya fungsi ini hanya mengembalikan []uint (UserIDs).
+	// Tapi untuk tahap transisi ini, kita biarkan dulu karena handler membutuhkannya.
 	err := r.db.Table("users").
 		Joins("JOIN organization_users ON organization_users.user_id = users.id").
 		Where("organization_users.organization_id = ?", orgID).

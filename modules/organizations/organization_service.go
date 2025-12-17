@@ -21,16 +21,22 @@ func NewOrganizationService(repo OrganizationRepository) OrganizationService {
 }
 
 func (s *organizationService) CreateOrganization(name string, ownerID uint) (*models.Organization, error) {
+	// Buat Object Organization
 	org := models.Organization{
 		Name:    name,
 		OwnerID: ownerID,
-		// The Owner is automatically added as the first member
-		Users: []models.User{{ID: ownerID}},
 	}
 
+	// Simpan ke DB
 	if err := s.repo.Create(&org); err != nil {
 		return nil, err
 	}
+
+	// Tambahkan Owner sebagai Member (Manual Call)
+	if err := s.repo.AddMember(org.ID, ownerID); err != nil {
+		return nil, err
+	}
+
 	return &org, nil
 }
 

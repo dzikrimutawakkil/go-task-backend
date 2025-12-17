@@ -111,10 +111,8 @@ func (s *taskService) UpdateTask(id string, input UpdateTaskInput) (*models.Task
 
 	// Handle Assignees Sync
 	if input.AssigneeIDs != nil {
-		users, _ := s.repo.FindUsersByIDs(input.AssigneeIDs)
-		// Clear old and set new (Replace)
 		s.repo.ClearAssignees(task)
-		s.repo.AssignUsers(task, users)
+		s.repo.AssignUsers(task, input.AssigneeIDs)
 	}
 
 	return s.repo.FindByID(id)

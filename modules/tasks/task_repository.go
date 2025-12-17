@@ -13,11 +13,9 @@ type TaskRepository interface {
 	Update(task *models.Task, updates map[string]interface{}) error
 	Delete(task *models.Task) error
 
-	// Assignee Management
 	ClearAssignees(task *models.Task) error
-	AssignUsers(task *models.Task, users []models.User) error
+	AssignUsers(task *models.Task, userIDs []uint) error // Ubah parameter jadi []uint
 
-	// Helper to find users by IDs (for assignment)
 	FindUsersByIDs(ids []uint) ([]models.User, error)
 	CheckProjectAccess(projectID string, orgID string) (bool, error)
 }
@@ -30,6 +28,20 @@ func NewTaskRepository(db *gorm.DB) TaskRepository {
 	return &repository{db}
 }
 
+// Helper internal untuk mengambil AssigneeIDs
+func (r *repository) fetchAssigneeIDs(task *models.Task) error {
+	var userIDs []uint
+	// Query manual ke tabel penghubung
+	err := r.db.Table("task_users").
+		Where("task_id = ?", task.ID).
+		Pluck("user_id", &userIDs).Error
+
+	if err == nil {
+		task.AssigneeIDs = userIDs
+	}
+	return err
+}
+
 func (r *repository) Create(task *models.Task) error {
 	return r.db.Create(task).Error
 }
@@ -38,19 +50,33 @@ func (r *repository) FindByID(id string) (*models.Task, error) {
 	var task models.Task
 	err := r.db.Preload("Status").
 		Preload("Priority").
-		Preload("Assignees").
 		First(&task, id).Error
-	return &task, err
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Manual Fetch IDs
+	_ = r.fetchAssigneeIDs(&task)
+	return &task, nil
 }
 
 func (r *repository) FindByProjectID(projectID string) ([]models.Task, error) {
 	var tasks []models.Task
 	err := r.db.Preload("Status").
 		Preload("Priority").
-		Preload("Assignees").
 		Where("project_id = ?", projectID).
 		Find(&tasks).Error
-	return tasks, err
+
+	if err != nil {
+		return tasks, err
+	}
+
+	// Populate IDs for each task (Looping query is N+1 problem, but acceptable for MVP microservice separation)
+	for i := range tasks {
+		_ = r.fetchAssigneeIDs(&tasks[i])
+	}
+	return tasks, nil
 }
 
 func (r *repository) Update(task *models.Task, updates map[string]interface{}) error {
@@ -62,11 +88,25 @@ func (r *repository) Delete(task *models.Task) error {
 }
 
 func (r *repository) ClearAssignees(task *models.Task) error {
-	return r.db.Model(task).Association("Assignees").Clear()
+	// Manual Delete dari tabel penghubung
+	return r.db.Exec("DELETE FROM task_users WHERE task_id = ?", task.ID).Error
 }
 
-func (r *repository) AssignUsers(task *models.Task, users []models.User) error {
-	return r.db.Model(task).Association("Assignees").Append(users) // Append or Replace based on need
+func (r *repository) AssignUsers(task *models.Task, userIDs []uint) error {
+	// Manual Insert ke tabel penghubung
+	// Kita buat struct temporary atau insert map
+	var records []map[string]interface{}
+	for _, uid := range userIDs {
+		records = append(records, map[string]interface{}{
+			"task_id": task.ID,
+			"user_id": uid,
+		})
+	}
+
+	if len(records) > 0 {
+		return r.db.Table("task_users").Create(&records).Error
+	}
+	return nil
 }
 
 func (r *repository) FindUsersByIDs(ids []uint) ([]models.User, error) {

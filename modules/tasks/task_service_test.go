@@ -51,8 +51,8 @@ func (m *MockTaskRepo) ClearAssignees(task *models.Task) error {
 	return args.Error(0)
 }
 
-func (m *MockTaskRepo) AssignUsers(task *models.Task, users []models.User) error {
-	args := m.Called(task, users)
+func (m *MockTaskRepo) AssignUsers(task *models.Task, userIDs []uint) error {
+	args := m.Called(task, userIDs)
 	return args.Error(0)
 }
 

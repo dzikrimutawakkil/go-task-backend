@@ -25,25 +25,21 @@ func NewProjectRepository(db *gorm.DB) ProjectRepository {
 	return &projectRepository{db}
 }
 
-// Fetch all projects in the Organization (Open Access)
+// Fetch all projects in the Organization
 func (r *projectRepository) FindAllByOrg(orgID string) ([]models.Project, error) {
 	var projects []models.Project
 	err := r.db.
 		Preload("Tasks.Status").
-		Preload("Tasks.Assignees").
 		Preload("Tasks.Priority").
 		Scopes(models.ByOrg(orgID)).
 		Find(&projects).Error
 	return projects, err
 }
 
-// Find a specific project, BUT ensure it belongs to the Org
+// Find a specific project
 func (r *projectRepository) FindByIDAndOrg(id string, orgID string) (*models.Project, error) {
 	var project models.Project
-	// We verify both ID and OrganizationID
 	err := r.db.
-		Preload("Organization").
-		Preload("Users"). // Users are just "members" now, not "access control"
 		Where("id = ? AND organization_id = ?", id, orgID).
 		First(&project).Error
 
