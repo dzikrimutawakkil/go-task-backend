@@ -64,6 +64,7 @@ func main() {
 
 		protected.POST("/organizations", orgHandler.CreateOrganization)
 		protected.POST("/organizations/invite", orgHandler.InviteMember)
+		protected.GET("/organizations/members", orgHandler.GetMembers)
 	}
 
 	r.Run(":8080")

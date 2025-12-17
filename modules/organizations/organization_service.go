@@ -9,6 +9,7 @@ type OrganizationService interface {
 	CreateOrganization(name string, ownerID uint) (*models.Organization, error)
 	CheckAccess(userID uint, orgID uint) (bool, error)
 	InviteMember(orgID uint, email string) error
+	GetMembers(orgID uint) ([]models.User, error)
 }
 
 type organizationService struct {
@@ -57,4 +58,8 @@ func (s *organizationService) InviteMember(orgID uint, email string) error {
 
 	// 3. Add Member
 	return s.repo.AddMember(orgID, user.ID)
+}
+
+func (s *organizationService) GetMembers(orgID uint) ([]models.User, error) {
+	return s.repo.FindMembers(orgID)
 }

@@ -12,6 +12,7 @@ type OrganizationRepository interface {
 	AddMember(orgID uint, userID uint) error
 	IsMember(userID uint, orgID uint) (bool, error)
 	FindUserByEmail(email string) (*models.User, error)
+	FindMembers(orgID uint) ([]models.User, error)
 }
 
 type organizationRepository struct {
@@ -56,4 +57,15 @@ func (r *organizationRepository) FindUserByEmail(email string) (*models.User, er
 	var user models.User
 	err := r.db.Where("email = ?", email).First(&user).Error
 	return &user, err
+}
+
+func (r *organizationRepository) FindMembers(orgID uint) ([]models.User, error) {
+	var users []models.User
+	// We join the organization_users table to find the members
+	err := r.db.Table("users").
+		Joins("JOIN organization_users ON organization_users.user_id = users.id").
+		Where("organization_users.organization_id = ?", orgID).
+		Select("users.id, users.email").
+		Find(&users).Error
+	return users, err
 }

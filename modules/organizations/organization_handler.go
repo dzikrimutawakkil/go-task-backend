@@ -77,3 +77,18 @@ func (h *Handler) InviteMember(c *gin.Context) {
 
 	utils.SendSuccess(c, "Member added successfully")
 }
+
+func (h *Handler) GetMembers(c *gin.Context) {
+	// 1. Get Org ID from Header
+	orgIDStr := c.MustGet("org_id").(string)
+	orgID, _ := strconv.ParseUint(orgIDStr, 10, 64)
+
+	// 2. Fetch
+	users, err := h.service.GetMembers(uint(orgID))
+	if err != nil {
+		utils.SendError(c, http.StatusInternalServerError, "Failed to fetch members")
+		return
+	}
+
+	utils.SendSuccess(c, "Success", users)
+}
