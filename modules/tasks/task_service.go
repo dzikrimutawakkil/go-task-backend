@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"errors"
+	"gotask-backend/modules/auth"
 	"strconv"
 	"time"
 )
@@ -14,11 +15,15 @@ type TaskService interface {
 }
 
 type taskService struct {
-	repo TaskRepository
+	repo        TaskRepository
+	authService auth.AuthService
 }
 
-func NewTaskService(repo TaskRepository) TaskService {
-	return &taskService{repo}
+func NewTaskService(repo TaskRepository, authS auth.AuthService) TaskService {
+	return &taskService{
+		repo:        repo,
+		authService: authS,
+	}
 }
 
 type CreateTaskInput struct {
@@ -110,8 +115,20 @@ func (s *taskService) UpdateTask(id string, input UpdateTaskInput) (*Task, error
 
 	// Handle Assignees Sync
 	if input.AssigneeIDs != nil {
+		// Cek apakah user-user ini valid dengan nanya ke Auth Service
+		users, err := s.authService.GetUsersByIDs(input.AssigneeIDs)
+		if err != nil {
+			return nil, err
+		}
+
+		// Ambil ID-nya saja untuk disimpan di tabel task_users
+		var validIDs []uint
+		for _, u := range users {
+			validIDs = append(validIDs, u.ID)
+		}
+
 		s.repo.ClearAssignees(task)
-		s.repo.AssignUsers(task, input.AssigneeIDs)
+		s.repo.AssignUsers(task, validIDs)
 	}
 
 	return s.repo.FindByID(id)

@@ -43,7 +43,7 @@ func main() {
 
 	// Dependency Injection for Tasks
 	taskRepo := tasks.NewTaskRepository(config.DB)
-	taskService := tasks.NewTaskService(taskRepo)
+	taskService := tasks.NewTaskService(taskRepo, authService)
 	taskHandler := tasks.NewTaskHandler(taskService)
 
 	// PUBLIC ROUTES

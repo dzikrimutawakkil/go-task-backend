@@ -1,8 +1,6 @@
 package tasks
 
 import (
-	"gotask-backend/modules/auth"
-
 	"gorm.io/gorm"
 )
 
@@ -16,7 +14,6 @@ type TaskRepository interface {
 	ClearAssignees(task *Task) error
 	AssignUsers(task *Task, userIDs []uint) error
 
-	FindUsersByIDs(ids []uint) ([]auth.User, error)
 	CheckProjectAccess(projectID string, orgID string) (bool, error)
 }
 
@@ -107,12 +104,6 @@ func (r *repository) AssignUsers(task *Task, userIDs []uint) error {
 		return r.db.Table("task_users").Create(&records).Error
 	}
 	return nil
-}
-
-func (r *repository) FindUsersByIDs(ids []uint) ([]auth.User, error) {
-	var users []auth.User
-	err := r.db.Find(&users, ids).Error
-	return users, err
 }
 
 func (r *repository) CheckProjectAccess(projectID string, orgID string) (bool, error) {
