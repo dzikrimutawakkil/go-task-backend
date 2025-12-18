@@ -1,7 +1,7 @@
 package projects
 
 import (
-	"gotask-backend/models"
+	"gotask-backend/modules/auth"
 	"gotask-backend/utils"
 	"net/http"
 	"strconv"
@@ -46,7 +46,7 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 		return
 	}
 
-	user := c.MustGet("user").(models.User)
+	user := c.MustGet("user").(auth.User)
 
 	input := CreateProjectInput{
 		Name:           jsonInput.Name,

@@ -1,14 +1,12 @@
 package organizations
 
 import (
-	"gotask-backend/models"
-
 	"gorm.io/gorm"
 )
 
 type OrganizationRepository interface {
-	Create(org *models.Organization) error
-	FindByID(id uint) (*models.Organization, error)
+	Create(org *Organization) error
+	FindByID(id uint) (*Organization, error)
 	AddMember(orgID uint, userID uint) error
 	IsMember(userID uint, orgID uint) (bool, error)
 	FindMemberIDs(orgID uint) ([]uint, error)
@@ -22,12 +20,12 @@ func NewOrganizationRepository(db *gorm.DB) OrganizationRepository {
 	return &organizationRepository{db}
 }
 
-func (r *organizationRepository) Create(org *models.Organization) error {
+func (r *organizationRepository) Create(org *Organization) error {
 	return r.db.Create(org).Error
 }
 
-func (r *organizationRepository) FindByID(id uint) (*models.Organization, error) {
-	var org models.Organization
+func (r *organizationRepository) FindByID(id uint) (*Organization, error) {
+	var org Organization
 	err := r.db.First(&org, id).Error
 	return &org, err
 }

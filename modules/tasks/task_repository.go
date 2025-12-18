@@ -1,22 +1,22 @@
 package tasks
 
 import (
-	"gotask-backend/models"
+	"gotask-backend/modules/auth"
 
 	"gorm.io/gorm"
 )
 
 type TaskRepository interface {
-	Create(task *models.Task) error
-	FindByID(id string) (*models.Task, error)
-	FindByProjectID(projectID string) ([]models.Task, error)
-	Update(task *models.Task, updates map[string]interface{}) error
-	Delete(task *models.Task) error
+	Create(task *Task) error
+	FindByID(id string) (*Task, error)
+	FindByProjectID(projectID string) ([]Task, error)
+	Update(task *Task, updates map[string]interface{}) error
+	Delete(task *Task) error
 
-	ClearAssignees(task *models.Task) error
-	AssignUsers(task *models.Task, userIDs []uint) error // Ubah parameter jadi []uint
+	ClearAssignees(task *Task) error
+	AssignUsers(task *Task, userIDs []uint) error
 
-	FindUsersByIDs(ids []uint) ([]models.User, error)
+	FindUsersByIDs(ids []uint) ([]auth.User, error)
 	CheckProjectAccess(projectID string, orgID string) (bool, error)
 }
 
@@ -29,7 +29,7 @@ func NewTaskRepository(db *gorm.DB) TaskRepository {
 }
 
 // Helper internal untuk mengambil AssigneeIDs
-func (r *repository) fetchAssigneeIDs(task *models.Task) error {
+func (r *repository) fetchAssigneeIDs(task *Task) error {
 	var userIDs []uint
 	// Query manual ke tabel penghubung
 	err := r.db.Table("task_users").
@@ -42,12 +42,12 @@ func (r *repository) fetchAssigneeIDs(task *models.Task) error {
 	return err
 }
 
-func (r *repository) Create(task *models.Task) error {
+func (r *repository) Create(task *Task) error {
 	return r.db.Create(task).Error
 }
 
-func (r *repository) FindByID(id string) (*models.Task, error) {
-	var task models.Task
+func (r *repository) FindByID(id string) (*Task, error) {
+	var task Task
 	err := r.db.Preload("Status").
 		Preload("Priority").
 		First(&task, id).Error
@@ -61,8 +61,8 @@ func (r *repository) FindByID(id string) (*models.Task, error) {
 	return &task, nil
 }
 
-func (r *repository) FindByProjectID(projectID string) ([]models.Task, error) {
-	var tasks []models.Task
+func (r *repository) FindByProjectID(projectID string) ([]Task, error) {
+	var tasks []Task
 	err := r.db.Preload("Status").
 		Preload("Priority").
 		Where("project_id = ?", projectID).
@@ -79,20 +79,20 @@ func (r *repository) FindByProjectID(projectID string) ([]models.Task, error) {
 	return tasks, nil
 }
 
-func (r *repository) Update(task *models.Task, updates map[string]interface{}) error {
+func (r *repository) Update(task *Task, updates map[string]interface{}) error {
 	return r.db.Model(task).Updates(updates).Error
 }
 
-func (r *repository) Delete(task *models.Task) error {
+func (r *repository) Delete(task *Task) error {
 	return r.db.Delete(task).Error
 }
 
-func (r *repository) ClearAssignees(task *models.Task) error {
+func (r *repository) ClearAssignees(task *Task) error {
 	// Manual Delete dari tabel penghubung
 	return r.db.Exec("DELETE FROM task_users WHERE task_id = ?", task.ID).Error
 }
 
-func (r *repository) AssignUsers(task *models.Task, userIDs []uint) error {
+func (r *repository) AssignUsers(task *Task, userIDs []uint) error {
 	// Manual Insert ke tabel penghubung
 	// Kita buat struct temporary atau insert map
 	var records []map[string]interface{}
@@ -109,8 +109,8 @@ func (r *repository) AssignUsers(task *models.Task, userIDs []uint) error {
 	return nil
 }
 
-func (r *repository) FindUsersByIDs(ids []uint) ([]models.User, error) {
-	var users []models.User
+func (r *repository) FindUsersByIDs(ids []uint) ([]auth.User, error) {
+	var users []auth.User
 	err := r.db.Find(&users, ids).Error
 	return users, err
 }

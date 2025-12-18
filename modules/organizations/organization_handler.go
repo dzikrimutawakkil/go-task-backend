@@ -1,7 +1,7 @@
 package organizations
 
 import (
-	"gotask-backend/models"
+	"gotask-backend/modules/auth"
 	"gotask-backend/utils"
 	"net/http"
 	"strconv"
@@ -29,7 +29,7 @@ func (h *Handler) CreateOrganization(c *gin.Context) {
 	}
 
 	// Get Current User from Context
-	user := c.MustGet("user").(models.User)
+	user := c.MustGet("user").(auth.User)
 
 	org, err := h.service.CreateOrganization(req.Name, user.ID)
 	if err != nil {

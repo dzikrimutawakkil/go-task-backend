@@ -2,15 +2,14 @@ package organizations
 
 import (
 	"errors"
-	"gotask-backend/models"
 	"gotask-backend/modules/auth"
 )
 
 type OrganizationService interface {
-	CreateOrganization(name string, ownerID uint) (*models.Organization, error)
+	CreateOrganization(name string, ownerID uint) (*Organization, error)
 	CheckAccess(userID uint, orgID uint) (bool, error)
 	InviteMember(orgID uint, email string) error
-	GetMembers(orgID uint) ([]models.User, error)
+	GetMembers(orgID uint) ([]auth.User, error)
 }
 
 type organizationService struct {
@@ -25,9 +24,9 @@ func NewOrganizationService(repo OrganizationRepository, authS auth.AuthService)
 	}
 }
 
-func (s *organizationService) CreateOrganization(name string, ownerID uint) (*models.Organization, error) {
+func (s *organizationService) CreateOrganization(name string, ownerID uint) (*Organization, error) {
 	// Buat Object Organization
-	org := models.Organization{
+	org := Organization{
 		Name:    name,
 		OwnerID: ownerID,
 	}
@@ -68,7 +67,7 @@ func (s *organizationService) InviteMember(orgID uint, email string) error {
 	return s.repo.AddMember(orgID, user.ID)
 }
 
-func (s *organizationService) GetMembers(orgID uint) ([]models.User, error) {
+func (s *organizationService) GetMembers(orgID uint) ([]auth.User, error) {
 	// Ambil ID Member dari database sendiri (Organization)
 	memberIDs, err := s.repo.FindMemberIDs(orgID)
 	if err != nil {
@@ -76,7 +75,7 @@ func (s *organizationService) GetMembers(orgID uint) ([]models.User, error) {
 	}
 
 	if len(memberIDs) == 0 {
-		return []models.User{}, nil
+		return []auth.User{}, nil
 	}
 
 	// Ambil Detail User dari Service Tetangga (Auth)

@@ -2,15 +2,14 @@ package tasks
 
 import (
 	"errors"
-	"gotask-backend/models"
 	"strconv"
 	"time"
 )
 
 type TaskService interface {
-	CreateTask(input CreateTaskInput) (*models.Task, error)
-	GetTasksByProject(projectID string, orgID string) ([]models.Task, error)
-	UpdateTask(id string, input UpdateTaskInput) (*models.Task, error)
+	CreateTask(input CreateTaskInput) (*Task, error)
+	GetTasksByProject(projectID string, orgID string) ([]Task, error)
+	UpdateTask(id string, input UpdateTaskInput) (*Task, error)
 	DeleteTask(id string) error
 }
 
@@ -40,7 +39,7 @@ type UpdateTaskInput struct {
 	EndDate     *time.Time
 }
 
-func (s *taskService) CreateTask(input CreateTaskInput) (*models.Task, error) {
+func (s *taskService) CreateTask(input CreateTaskInput) (*Task, error) {
 	// 1. Set Defaults (Business Logic)
 	if input.StatusID == 0 {
 		input.StatusID = 1 // Assuming ID 1 is "Todo"
@@ -49,7 +48,7 @@ func (s *taskService) CreateTask(input CreateTaskInput) (*models.Task, error) {
 		input.PriorityID = 2 // Assuming ID 2 is "Medium"
 	}
 
-	task := models.Task{
+	task := Task{
 		Title:      input.Title,
 		ProjectID:  input.ProjectID,
 		StatusID:   input.StatusID,
@@ -66,7 +65,7 @@ func (s *taskService) CreateTask(input CreateTaskInput) (*models.Task, error) {
 	return s.repo.FindByID(interfaceToString(task.ID))
 }
 
-func (s *taskService) GetTasksByProject(projectID string, orgID string) ([]models.Task, error) {
+func (s *taskService) GetTasksByProject(projectID string, orgID string) ([]Task, error) {
 	// Call Repo to check Security
 	hasAccess, err := s.repo.CheckProjectAccess(projectID, orgID)
 	if err != nil {
@@ -80,7 +79,7 @@ func (s *taskService) GetTasksByProject(projectID string, orgID string) ([]model
 	return s.repo.FindByProjectID(projectID)
 }
 
-func (s *taskService) UpdateTask(id string, input UpdateTaskInput) (*models.Task, error) {
+func (s *taskService) UpdateTask(id string, input UpdateTaskInput) (*Task, error) {
 	task, err := s.repo.FindByID(id)
 	if err != nil {
 		return nil, errors.New("task not found")

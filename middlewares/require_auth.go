@@ -3,7 +3,7 @@ package middlewares
 import (
 	"fmt"
 	"gotask-backend/config"
-	"gotask-backend/models"
+	"gotask-backend/modules/auth"
 	"net/http"
 	"os"
 	"strings"
@@ -45,7 +45,7 @@ func RequireAuth(c *gin.Context) {
 		}
 
 		// 4. Find the user
-		var user models.User
+		var user auth.User
 		config.DB.First(&user, claims["sub"])
 
 		if user.ID == 0 {

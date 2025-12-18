@@ -2,12 +2,11 @@ package projects
 
 import (
 	"errors"
-	"gotask-backend/models"
 )
 
 type ProjectService interface {
-	GetProjects(orgID string) ([]models.Project, error)
-	CreateProject(input CreateProjectInput, userID uint) (*models.Project, error)
+	GetProjects(orgID string) ([]Project, error)
+	CreateProject(input CreateProjectInput, userID uint) (*Project, error)
 	DeleteProject(id string, orgID string) error
 }
 
@@ -26,12 +25,12 @@ type CreateProjectInput struct {
 	OrganizationID uint
 }
 
-func (s *projectService) GetProjects(orgID string) ([]models.Project, error) {
+func (s *projectService) GetProjects(orgID string) ([]Project, error) {
 	return s.repo.FindAllByOrg(orgID)
 }
 
-func (s *projectService) CreateProject(input CreateProjectInput, userID uint) (*models.Project, error) {
-	project := models.Project{
+func (s *projectService) CreateProject(input CreateProjectInput, userID uint) (*Project, error) {
+	project := Project{
 		Name:           input.Name,
 		Description:    input.Description,
 		OrganizationID: input.OrganizationID,

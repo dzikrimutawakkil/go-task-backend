@@ -2,7 +2,6 @@ package auth
 
 import (
 	"errors"
-	"gotask-backend/models"
 	"os"
 	"time"
 
@@ -11,10 +10,10 @@ import (
 )
 
 type AuthService interface {
-	Signup(input SignupInput) (*models.User, error)
+	Signup(input SignupInput) (*User, error)
 	Login(input LoginInput) (string, error)
-	GetUsersByIDs(ids []uint) ([]models.User, error)
-	GetUserByEmail(email string) (*models.User, error)
+	GetUsersByIDs(ids []uint) ([]User, error)
+	GetUserByEmail(email string) (*User, error)
 }
 
 type authService struct {
@@ -36,7 +35,7 @@ type LoginInput struct {
 	Password string
 }
 
-func (s *authService) Signup(input SignupInput) (*models.User, error) {
+func (s *authService) Signup(input SignupInput) (*User, error) {
 	// 1. Hash Password
 	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), 10)
 	if err != nil {
@@ -44,7 +43,7 @@ func (s *authService) Signup(input SignupInput) (*models.User, error) {
 	}
 
 	// 2. Create User
-	user := models.User{
+	user := User{
 		Email:    input.Email,
 		Password: string(hash),
 	}
@@ -81,10 +80,10 @@ func (s *authService) Login(input LoginInput) (string, error) {
 	return tokenString, nil
 }
 
-func (s *authService) GetUsersByIDs(ids []uint) ([]models.User, error) {
+func (s *authService) GetUsersByIDs(ids []uint) ([]User, error) {
 	return s.repo.FindUsersByIDs(ids)
 }
 
-func (s *authService) GetUserByEmail(email string) (*models.User, error) {
+func (s *authService) GetUserByEmail(email string) (*User, error) {
 	return s.repo.FindUserByEmail(email)
 }

@@ -2,7 +2,10 @@ package config
 
 import (
 	"fmt"
-	"gotask-backend/models"
+	"gotask-backend/modules/auth"
+	"gotask-backend/modules/organizations"
+	"gotask-backend/modules/projects"
+	"gotask-backend/modules/tasks"
 	"log"
 	"os"
 	"strings"
@@ -34,10 +37,10 @@ func ConnectDatabase() {
 		panic("Failed to connect to database!")
 	}
 
-	database.AutoMigrate(&models.User{},
-		&models.Project{}, &models.Task{},
-		&models.Status{}, &models.Priority{},
-		&models.Organization{})
+	database.AutoMigrate(&auth.User{},
+		&projects.Project{}, &tasks.Task{},
+		&tasks.Status{}, &tasks.Priority{},
+		&organizations.Organization{})
 
 	DB = database
 
@@ -51,15 +54,15 @@ func seedStatuses() {
 	statuses := []string{"Todo", "In Progress", "Done", "Pending", "Canceled"}
 
 	for _, name := range statuses {
-		var status models.Status
+		var status tasks.Status
 		slug := strings.ToLower(strings.ReplaceAll(name, " ", "_"))
 
-		DB.FirstOrCreate(&status, models.Status{Name: name, Slug: slug})
+		DB.FirstOrCreate(&status, tasks.Status{Name: name, Slug: slug})
 	}
 }
 
 func seedPriority() {
-	priorities := []models.Priority{
+	priorities := []tasks.Priority{
 		{Name: "Low", Level: 1, Color: "#808080"},    // Gray
 		{Name: "Medium", Level: 2, Color: "#0000FF"}, // Blue
 		{Name: "High", Level: 3, Color: "#FFA500"},   // Orange
@@ -67,7 +70,7 @@ func seedPriority() {
 	}
 
 	for _, p := range priorities {
-		var exists models.Priority
+		var exists tasks.Priority
 		if DB.Where("name = ?", p.Name).First(&exists).Error != nil {
 			DB.Create(&p)
 		}

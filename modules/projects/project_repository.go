@@ -2,15 +2,16 @@ package projects
 
 import (
 	"gotask-backend/models"
+	"gotask-backend/modules/tasks"
 
 	"gorm.io/gorm"
 )
 
 type ProjectRepository interface {
-	FindAllByOrg(orgID string) ([]models.Project, error)
-	FindByIDAndOrg(id string, orgID string) (*models.Project, error)
-	Create(project *models.Project) error
-	Delete(project *models.Project) error
+	FindAllByOrg(orgID string) ([]Project, error)
+	FindByIDAndOrg(id string, orgID string) (*Project, error)
+	Create(project *Project) error
+	Delete(project *Project) error
 
 	// Task cleanup helpers
 	DeleteTasksByProject(projectID uint) error
@@ -26,8 +27,8 @@ func NewProjectRepository(db *gorm.DB) ProjectRepository {
 }
 
 // Fetch all projects in the Organization
-func (r *projectRepository) FindAllByOrg(orgID string) ([]models.Project, error) {
-	var projects []models.Project
+func (r *projectRepository) FindAllByOrg(orgID string) ([]Project, error) {
+	var projects []Project
 	err := r.db.
 		Scopes(models.ByOrg(orgID)).
 		Find(&projects).Error
@@ -35,8 +36,8 @@ func (r *projectRepository) FindAllByOrg(orgID string) ([]models.Project, error)
 }
 
 // Find a specific project
-func (r *projectRepository) FindByIDAndOrg(id string, orgID string) (*models.Project, error) {
-	var project models.Project
+func (r *projectRepository) FindByIDAndOrg(id string, orgID string) (*Project, error) {
+	var project Project
 	err := r.db.
 		Where("id = ? AND organization_id = ?", id, orgID).
 		First(&project).Error
@@ -47,11 +48,11 @@ func (r *projectRepository) FindByIDAndOrg(id string, orgID string) (*models.Pro
 	return &project, nil
 }
 
-func (r *projectRepository) Create(project *models.Project) error {
+func (r *projectRepository) Create(project *Project) error {
 	return r.db.Create(project).Error
 }
 
-func (r *projectRepository) Delete(project *models.Project) error {
+func (r *projectRepository) Delete(project *Project) error {
 	return r.db.Delete(project).Error
 }
 
@@ -60,5 +61,5 @@ func (r *projectRepository) ClearTaskAssignees(projectID uint) error {
 }
 
 func (r *projectRepository) DeleteTasksByProject(projectID uint) error {
-	return r.db.Where("project_id = ?", projectID).Delete(&models.Task{}).Error
+	return r.db.Where("project_id = ?", projectID).Delete(&tasks.Task{}).Error
 }

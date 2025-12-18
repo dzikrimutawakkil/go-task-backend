@@ -1,16 +1,14 @@
 package auth
 
 import (
-	"gotask-backend/models"
-
 	"gorm.io/gorm"
 )
 
 type AuthRepository interface {
-	CreateUser(user *models.User) error
-	FindUserByEmail(email string) (*models.User, error)
-	FindUserByID(id uint) (*models.User, error)
-	FindUsersByIDs(ids []uint) ([]models.User, error)
+	CreateUser(user *User) error
+	FindUserByEmail(email string) (*User, error)
+	FindUserByID(id uint) (*User, error)
+	FindUsersByIDs(ids []uint) ([]User, error)
 }
 
 type authRepository struct {
@@ -21,24 +19,24 @@ func NewAuthRepository(db *gorm.DB) AuthRepository {
 	return &authRepository{db}
 }
 
-func (r *authRepository) CreateUser(user *models.User) error {
+func (r *authRepository) CreateUser(user *User) error {
 	return r.db.Create(user).Error
 }
 
-func (r *authRepository) FindUserByEmail(email string) (*models.User, error) {
-	var user models.User
+func (r *authRepository) FindUserByEmail(email string) (*User, error) {
+	var user User
 	err := r.db.Where("email = ?", email).First(&user).Error
 	return &user, err
 }
 
-func (r *authRepository) FindUserByID(id uint) (*models.User, error) {
-	var user models.User
+func (r *authRepository) FindUserByID(id uint) (*User, error) {
+	var user User
 	err := r.db.First(&user, id).Error
 	return &user, err
 }
 
-func (r *authRepository) FindUsersByIDs(ids []uint) ([]models.User, error) {
-	var users []models.User
+func (r *authRepository) FindUsersByIDs(ids []uint) ([]User, error) {
+	var users []User
 	err := r.db.Find(&users, ids).Error
 	return users, err
 }
