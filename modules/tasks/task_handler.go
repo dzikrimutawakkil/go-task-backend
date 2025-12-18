@@ -2,7 +2,9 @@ package tasks
 
 import (
 	"gotask-backend/utils"
+	"math"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -27,14 +29,27 @@ func (h *Handler) FindTasksByProject(c *gin.Context) {
 	}
 	orgID := orgIDInterface.(string)
 
-	tasks, err := h.service.GetTasksByProject(projectID, orgID)
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+
+	tasks, total, err := h.service.GetTasksByProject(projectID, orgID, page, limit)
 
 	if err != nil {
 		utils.SendError(c, http.StatusInternalServerError, "Failed to fetch tasks")
 		return
 	}
 
-	utils.SendSuccess(c, "success", tasks)
+	totalPages := int(math.Ceil(float64(total) / float64(limit)))
+
+	utils.SendSuccess(c, "success", gin.H{
+		"tasks": tasks,
+		"meta": gin.H{
+			"current_page": page,
+			"limit":        limit,
+			"total_data":   total,
+			"total_pages":  totalPages,
+		},
+	})
 }
 
 // POST /tasks

@@ -7,7 +7,7 @@ import (
 type TaskRepository interface {
 	Create(task *Task) error
 	FindByID(id string) (*Task, error)
-	FindByProjectID(projectID string) ([]Task, error)
+	FindByProjectID(projectID string, page int, limit int) ([]Task, int64, error)
 	Update(task *Task, updates map[string]interface{}) error
 	Delete(task *Task) error
 
@@ -58,22 +58,33 @@ func (r *repository) FindByID(id string) (*Task, error) {
 	return &task, nil
 }
 
-func (r *repository) FindByProjectID(projectID string) ([]Task, error) {
+func (r *repository) FindByProjectID(projectID string, page int, limit int) ([]Task, int64, error) {
 	var tasks []Task
+	var total int64
+
+	offset := (page - 1) * limit
+
+	if err := r.db.Model(&Task{}).Where("project_id = ?", projectID).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
 	err := r.db.Preload("Status").
 		Preload("Priority").
 		Where("project_id = ?", projectID).
+		Order("created_at desc").
+		Limit(limit).
+		Offset(offset).
 		Find(&tasks).Error
 
 	if err != nil {
-		return tasks, err
+		return nil, 0, err
 	}
 
 	// Populate IDs for each task (Looping query is N+1 problem, but acceptable for MVP microservice separation)
 	for i := range tasks {
 		_ = r.fetchAssigneeIDs(&tasks[i])
 	}
-	return tasks, nil
+	return tasks, total, nil
 }
 
 func (r *repository) Update(task *Task, updates map[string]interface{}) error {

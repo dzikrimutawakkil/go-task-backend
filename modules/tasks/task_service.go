@@ -9,7 +9,7 @@ import (
 
 type TaskService interface {
 	CreateTask(input CreateTaskInput) (*Task, error)
-	GetTasksByProject(projectID string, orgID string) ([]Task, error)
+	GetTasksByProject(projectID string, orgID string, page int, limit int) ([]Task, int64, error)
 	UpdateTask(id string, input UpdateTaskInput) (*Task, error)
 	DeleteTask(id string) error
 }
@@ -70,18 +70,18 @@ func (s *taskService) CreateTask(input CreateTaskInput) (*Task, error) {
 	return s.repo.FindByID(interfaceToString(task.ID))
 }
 
-func (s *taskService) GetTasksByProject(projectID string, orgID string) ([]Task, error) {
+func (s *taskService) GetTasksByProject(projectID string, orgID string, page int, limit int) ([]Task, int64, error) {
 	// Call Repo to check Security
 	hasAccess, err := s.repo.CheckProjectAccess(projectID, orgID)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	if !hasAccess {
-		return nil, errors.New("project not found or access denied")
+		return nil, 0, errors.New("project not found or access denied")
 	}
 
 	// Fetch Tasks (Safe now)
-	return s.repo.FindByProjectID(projectID)
+	return s.repo.FindByProjectID(projectID, page, limit)
 }
 
 func (s *taskService) UpdateTask(id string, input UpdateTaskInput) (*Task, error) {
