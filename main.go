@@ -36,15 +36,15 @@ func main() {
 	orgService := organizations.NewOrganizationService(orgRepo, authService)
 	orgHandler := organizations.NewOrganizationHandler(orgService)
 
-	// Dependency Injection for Projects
-	projectRepo := projects.NewProjectRepository(config.DB)
-	projectService := projects.NewProjectService(projectRepo)
-	projectHandler := projects.NewProjectHandler(projectService)
-
 	// Dependency Injection for Tasks
 	taskRepo := tasks.NewTaskRepository(config.DB)
 	taskService := tasks.NewTaskService(taskRepo, authService)
 	taskHandler := tasks.NewTaskHandler(taskService)
+
+	// Dependency Injection for Projects
+	projectRepo := projects.NewProjectRepository(config.DB)
+	projectService := projects.NewProjectService(projectRepo, taskService)
+	projectHandler := projects.NewProjectHandler(projectService)
 
 	// PUBLIC ROUTES
 	r.POST("/signup", authHandler.Signup)
@@ -62,6 +62,8 @@ func main() {
 		protected.POST("/tasks", taskHandler.CreateTask)
 		protected.PATCH("/tasks/:id", taskHandler.UpdateTask)
 		protected.DELETE("/tasks/:id", taskHandler.DeleteTask)
+
+		protected.GET("/projects/:id/status", taskHandler.FindStatusesByProject)
 
 		protected.POST("/organizations", orgHandler.CreateOrganization)
 		protected.POST("/organizations/invite", orgHandler.InviteMember)

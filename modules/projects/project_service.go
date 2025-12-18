@@ -2,6 +2,7 @@ package projects
 
 import (
 	"errors"
+	"gotask-backend/modules/tasks"
 )
 
 type ProjectService interface {
@@ -11,11 +12,12 @@ type ProjectService interface {
 }
 
 type projectService struct {
-	repo ProjectRepository
+	repo        ProjectRepository
+	taskService tasks.TaskService
 }
 
-func NewProjectService(repo ProjectRepository) ProjectService {
-	return &projectService{repo}
+func NewProjectService(repo ProjectRepository, taskService tasks.TaskService) ProjectService {
+	return &projectService{repo, taskService}
 }
 
 // Input DTO
@@ -37,6 +39,10 @@ func (s *projectService) CreateProject(input CreateProjectInput, userID uint) (*
 	}
 
 	if err := s.repo.Create(&project); err != nil {
+		return nil, err
+	}
+
+	if err := s.taskService.CreateDefaultStatuses(project.ID); err != nil {
 		return nil, err
 	}
 

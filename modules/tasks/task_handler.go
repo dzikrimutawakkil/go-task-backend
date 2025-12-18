@@ -133,3 +133,15 @@ func (h *Handler) DeleteTask(c *gin.Context) {
 
 	utils.SendSuccess(c, "Task deleted successfully")
 }
+
+func (h *Handler) FindStatusesByProject(c *gin.Context) {
+	projectID := c.Param("id")
+
+	statuses, err := h.service.GetStatuses(projectID)
+	if err != nil {
+		utils.SendError(c, http.StatusInternalServerError, "Failed to fetch statuses")
+		return
+	}
+
+	utils.SendSuccess(c, "success", statuses)
+}

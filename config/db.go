@@ -8,7 +8,6 @@ import (
 	"gotask-backend/modules/tasks"
 	"log"
 	"os"
-	"strings"
 
 	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
@@ -39,26 +38,14 @@ func ConnectDatabase() {
 
 	database.AutoMigrate(&auth.User{},
 		&projects.Project{}, &tasks.Task{},
-		&tasks.Status{}, &tasks.Priority{},
-		&organizations.Organization{})
+		&tasks.Status{}, &tasks.Priority{}, &tasks.TaskUser{},
+		&organizations.Organization{}, &organizations.OrganizationUser{})
 
 	DB = database
 
-	seedStatuses()
 	seedPriority()
 
 	fmt.Println("Database connected and seeded!")
-}
-
-func seedStatuses() {
-	statuses := []string{"Todo", "In Progress", "Done", "Pending", "Canceled"}
-
-	for _, name := range statuses {
-		var status tasks.Status
-		slug := strings.ToLower(strings.ReplaceAll(name, " ", "_"))
-
-		DB.FirstOrCreate(&status, tasks.Status{Name: name, Slug: slug})
-	}
 }
 
 func seedPriority() {

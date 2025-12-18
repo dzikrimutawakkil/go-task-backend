@@ -10,3 +10,9 @@ type Organization struct {
 	OwnerID   uint      `json:"owner_id"`
 	CreatedAt time.Time `json:"created_at"`
 }
+
+type OrganizationUser struct {
+	OrganizationID uint `gorm:"primaryKey"`
+	UserID         uint `gorm:"primaryKey"`
+	CreatedAt      time.Time
+}

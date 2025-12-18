@@ -12,6 +12,9 @@ type TaskService interface {
 	GetTasksByProject(projectID string, orgID string, page int, limit int) ([]Task, int64, error)
 	UpdateTask(id string, input UpdateTaskInput) (*Task, error)
 	DeleteTask(id string) error
+
+	CreateDefaultStatuses(projectID uint) error
+	GetStatuses(projectID string) ([]Status, error)
 }
 
 type taskService struct {
@@ -145,4 +148,24 @@ func (s *taskService) DeleteTask(id string) error {
 // Helper function to convert uint ID to string
 func interfaceToString(id uint) string {
 	return strconv.FormatUint(uint64(id), 10)
+}
+
+func (s *taskService) CreateDefaultStatuses(projectID uint) error {
+	defaults := []string{"Todo", "On Progress", "Done", "Pending", "Cancel"}
+
+	for i, name := range defaults {
+		status := Status{
+			Name:      name,
+			Index:     i,
+			ProjectID: int(projectID),
+		}
+		if err := s.repo.CreateStatus(&status); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *taskService) GetStatuses(projectID string) ([]Status, error) {
+	return s.repo.GetStatusesByProjectID(projectID)
 }

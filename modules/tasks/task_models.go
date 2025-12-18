@@ -3,9 +3,10 @@ package tasks
 import "time"
 
 type Status struct {
-	ID   uint   `gorm:"primaryKey" json:"id"`
-	Name string `gorm:"unique" json:"name"`
-	Slug string `gorm:"unique" json:"slug"`
+	ID        uint   `gorm:"primaryKey" json:"id"`
+	Name      string `json:"name"`
+	Index     int    `json:"index"`
+	ProjectID int    `json:"project_id"`
 }
 
 type Priority struct {
@@ -16,15 +17,23 @@ type Priority struct {
 }
 
 type Task struct {
-	ID          uint       `gorm:"primaryKey" json:"id"`
-	Title       string     `json:"title"`
-	StatusID    uint       `json:"status_id"`
-	Status      Status     `gorm:"foreignKey:StatusID" json:"status"`
-	PriorityID  uint       `json:"priority_id"`
-	Priority    Priority   `gorm:"foreignKey:PriorityID" json:"priority"`
+	ID    uint   `gorm:"primaryKey" json:"id"`
+	Title string `json:"title"`
+
+	StatusID uint   `json:"status_id"`
+	Status   Status `gorm:"foreignKey:StatusID" json:"status"`
+
+	PriorityID uint     `json:"priority_id"`
+	Priority   Priority `gorm:"foreignKey:PriorityID" json:"priority"`
+
 	ProjectID   uint       `json:"project_id"`
 	AssigneeIDs []uint     `json:"assignee_ids" gorm:"-"`
 	StartDate   *time.Time `json:"start_date"`
 	EndDate     *time.Time `json:"end_date"`
 	CreatedAt   time.Time  `json:"created_at"`
+}
+
+type TaskUser struct {
+	TaskID uint `gorm:"primaryKey"`
+	UserID uint `gorm:"primaryKey"`
 }

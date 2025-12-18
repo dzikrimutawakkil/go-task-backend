@@ -15,6 +15,9 @@ type TaskRepository interface {
 	AssignUsers(task *Task, userIDs []uint) error
 
 	CheckProjectAccess(projectID string, orgID string) (bool, error)
+
+	CreateStatus(status *Status) error
+	GetStatusesByProjectID(projectID string) ([]Status, error)
 }
 
 type repository struct {
@@ -127,4 +130,14 @@ func (r *repository) CheckProjectAccess(projectID string, orgID string) (bool, e
 		return false, err
 	}
 	return count > 0, nil
+}
+
+func (r *repository) CreateStatus(status *Status) error {
+	return r.db.Create(status).Error
+}
+
+func (r *repository) GetStatusesByProjectID(projectID string) ([]Status, error) {
+	var statuses []Status
+	err := r.db.Where("project_id = ?", projectID).Order("index asc").Find(&statuses).Error
+	return statuses, err
 }
