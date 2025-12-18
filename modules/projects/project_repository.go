@@ -29,8 +29,6 @@ func NewProjectRepository(db *gorm.DB) ProjectRepository {
 func (r *projectRepository) FindAllByOrg(orgID string) ([]models.Project, error) {
 	var projects []models.Project
 	err := r.db.
-		Preload("Tasks.Status").
-		Preload("Tasks.Priority").
 		Scopes(models.ByOrg(orgID)).
 		Find(&projects).Error
 	return projects, err
