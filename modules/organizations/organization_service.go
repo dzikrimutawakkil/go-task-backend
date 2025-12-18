@@ -3,6 +3,7 @@ package organizations
 import (
 	"errors"
 	"gotask-backend/models"
+	"gotask-backend/modules/auth"
 )
 
 type OrganizationService interface {
@@ -13,11 +14,15 @@ type OrganizationService interface {
 }
 
 type organizationService struct {
-	repo OrganizationRepository
+	repo        OrganizationRepository
+	authService auth.AuthService
 }
 
-func NewOrganizationService(repo OrganizationRepository) OrganizationService {
-	return &organizationService{repo}
+func NewOrganizationService(repo OrganizationRepository, authS auth.AuthService) OrganizationService {
+	return &organizationService{
+		repo:        repo,
+		authService: authS,
+	}
 }
 
 func (s *organizationService) CreateOrganization(name string, ownerID uint) (*models.Organization, error) {
@@ -44,16 +49,14 @@ func (s *organizationService) CheckAccess(userID uint, orgID uint) (bool, error)
 	return s.repo.IsMember(userID, orgID)
 }
 
-// Add/Update this method in your Service interface & implementation
 func (s *organizationService) InviteMember(orgID uint, email string) error {
-	// 1. Find the User by Email
-	// (We need the repo to support this lookup)
-	user, err := s.repo.FindUserByEmail(email)
+	// Panggil Auth Service (Komunikasi antar module)
+	user, err := s.authService.GetUserByEmail(email)
 	if err != nil {
 		return errors.New("user with this email not found")
 	}
 
-	// 2. Check if already a member
+	// Cek logic membership di repo sendiri
 	isMember, err := s.repo.IsMember(user.ID, orgID)
 	if err != nil {
 		return err
@@ -62,10 +65,20 @@ func (s *organizationService) InviteMember(orgID uint, email string) error {
 		return errors.New("user is already a member")
 	}
 
-	// 3. Add Member
 	return s.repo.AddMember(orgID, user.ID)
 }
 
 func (s *organizationService) GetMembers(orgID uint) ([]models.User, error) {
-	return s.repo.FindMembers(orgID)
+	// Ambil ID Member dari database sendiri (Organization)
+	memberIDs, err := s.repo.FindMemberIDs(orgID)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(memberIDs) == 0 {
+		return []models.User{}, nil
+	}
+
+	// Ambil Detail User dari Service Tetangga (Auth)
+	return s.authService.GetUsersByIDs(memberIDs)
 }

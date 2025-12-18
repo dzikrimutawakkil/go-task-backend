@@ -10,6 +10,7 @@ type AuthRepository interface {
 	CreateUser(user *models.User) error
 	FindUserByEmail(email string) (*models.User, error)
 	FindUserByID(id uint) (*models.User, error)
+	FindUsersByIDs(ids []uint) ([]models.User, error)
 }
 
 type authRepository struct {
@@ -34,4 +35,10 @@ func (r *authRepository) FindUserByID(id uint) (*models.User, error) {
 	var user models.User
 	err := r.db.First(&user, id).Error
 	return &user, err
+}
+
+func (r *authRepository) FindUsersByIDs(ids []uint) ([]models.User, error) {
+	var users []models.User
+	err := r.db.Find(&users, ids).Error
+	return users, err
 }

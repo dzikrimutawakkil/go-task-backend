@@ -26,15 +26,15 @@ func main() {
 	r.Use(middlewares.CORSMiddleware())
 	r.Use(middlewares.EnsureJSON())
 
-	// Dependency Injection for Organization
-	orgRepo := organizations.NewOrganizationRepository(config.DB)
-	orgService := organizations.NewOrganizationService(orgRepo)
-	orgHandler := organizations.NewOrganizationHandler(orgService)
-
 	// Dependency Injection for Auth
 	authRepo := auth.NewAuthRepository(config.DB)
 	authService := auth.NewAuthService(authRepo)
 	authHandler := auth.NewAuthHandler(authService)
+
+	// Dependency Injection for Organization
+	orgRepo := organizations.NewOrganizationRepository(config.DB)
+	orgService := organizations.NewOrganizationService(orgRepo, authService)
+	orgHandler := organizations.NewOrganizationHandler(orgService)
 
 	// Dependency Injection for Projects
 	projectRepo := projects.NewProjectRepository(config.DB)
