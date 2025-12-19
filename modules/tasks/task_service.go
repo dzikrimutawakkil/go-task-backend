@@ -257,9 +257,25 @@ func (s *taskService) UpdateStatus(id string, name *string, newIndexPtr *int) (*
 }
 
 func (s *taskService) DeleteStatus(id string) error {
-	status, err := s.repo.FindStatusByID(id)
+	targetStatus, err := s.repo.FindStatusByID(id)
 	if err != nil {
 		return errors.New("status not found")
 	}
-	return s.repo.DeleteStatus(status)
+
+	projectStatuses, err := s.repo.GetStatusesByProjectID(strconv.Itoa(targetStatus.ProjectID))
+	if err != nil {
+		return errors.New("project statuses not found")
+	}
+
+	// Adjust Indexes of Remaining Statuses
+	for i := range projectStatuses {
+		if projectStatuses[i].Index > targetStatus.Index {
+			projectStatuses[i].Index -= 1
+		}
+	}
+	if err := s.repo.BulkUpdateStatuses(projectStatuses); err != nil {
+		return err
+	}
+
+	return s.repo.DeleteStatus(targetStatus)
 }
