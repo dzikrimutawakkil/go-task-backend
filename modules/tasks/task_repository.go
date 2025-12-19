@@ -18,6 +18,11 @@ type TaskRepository interface {
 
 	CreateStatus(status *Status) error
 	GetStatusesByProjectID(projectID string) ([]Status, error)
+	FindStatusByID(id string) (*Status, error)
+	UpdateStatus(status *Status, updates map[string]interface{}) error
+	DeleteStatus(status *Status) error
+	BulkUpdateStatuses(statuses []Status) error
+	GetMaxIndex(projectID string) (int, error)
 }
 
 type repository struct {
@@ -140,4 +145,59 @@ func (r *repository) GetStatusesByProjectID(projectID string) ([]Status, error) 
 	var statuses []Status
 	err := r.db.Where("project_id = ?", projectID).Order("index asc").Find(&statuses).Error
 	return statuses, err
+}
+
+func (r *repository) FindStatusByID(id string) (*Status, error) {
+	var status Status
+	err := r.db.First(&status, id).Error
+	return &status, err
+}
+
+func (r *repository) UpdateStatus(status *Status, updates map[string]interface{}) error {
+	return r.db.Model(status).Updates(updates).Error
+}
+
+func (r *repository) DeleteStatus(status *Status) error {
+	// Validasi opsional: Cek apakah status sedang dipakai oleh Task lain
+	var count int64
+	r.db.Model(&Task{}).Where("status_id = ?", status.ID).Count(&count)
+	if count > 0 {
+		return gorm.ErrForeignKeyViolated // Jangan hapus jika masih ada task
+	}
+
+	return r.db.Delete(status).Error
+}
+
+func (r *repository) BulkUpdateStatuses(statuses []Status) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		for _, status := range statuses {
+			updates := map[string]interface{}{
+				"index": status.Index,
+				"name":  status.Name,
+			}
+
+			if err := tx.Model(&Status{}).Where("id = ?", status.ID).Updates(updates).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (r *repository) GetMaxIndex(projectID string) (int, error) {
+	var status Status
+
+	err := r.db.Where("project_id = ?", projectID).
+		Order("index desc").
+		First(&status).
+		Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return -1, nil
+		}
+		return 0, err
+	}
+
+	return status.Index, nil
 }

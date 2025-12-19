@@ -15,6 +15,9 @@ type TaskService interface {
 
 	CreateDefaultStatuses(projectID uint) error
 	GetStatuses(projectID string) ([]Status, error)
+	CreateNewStatus(projectID uint, name string, index int) (*Status, error)
+	UpdateStatus(id string, name *string, index *int) (*Status, error)
+	DeleteStatus(id string) error
 }
 
 type taskService struct {
@@ -168,4 +171,95 @@ func (s *taskService) CreateDefaultStatuses(projectID uint) error {
 
 func (s *taskService) GetStatuses(projectID string) ([]Status, error) {
 	return s.repo.GetStatusesByProjectID(projectID)
+}
+
+func (s *taskService) CreateNewStatus(projectID uint, name string, index int) (*Status, error) {
+	getMaxIndex, err := s.repo.GetMaxIndex(strconv.Itoa(int(projectID)))
+	if err != nil {
+		return nil, err
+	}
+
+	status := Status{
+		Name:      name,
+		Index:     getMaxIndex + 1,
+		ProjectID: int(projectID),
+	}
+
+	if err := s.repo.CreateStatus(&status); err != nil {
+		return nil, err
+	}
+	return &status, nil
+}
+
+func (s *taskService) UpdateStatus(id string, name *string, newIndexPtr *int) (*Status, error) {
+	targetStatus, err := s.repo.FindStatusByID(id)
+	if err != nil {
+		return nil, errors.New("status not found")
+	}
+
+	if newIndexPtr != nil {
+		newIndex := *newIndexPtr
+		oldIndex := targetStatus.Index
+
+		projectStatuses, err := s.repo.GetStatusesByProjectID(strconv.Itoa(targetStatus.ProjectID))
+		if err != nil {
+			return nil, errors.New("project statuses not found")
+		}
+
+		for i := range projectStatuses {
+			if projectStatuses[i].ID == targetStatus.ID {
+				projectStatuses[i].Index = newIndex
+				if name != nil {
+					projectStatuses[i].Name = *name
+					targetStatus.Name = *name
+				}
+				targetStatus.Index = newIndex
+				continue
+			}
+
+			// B. Logika Geser (Shifting)
+
+			// KASUS 1: Pindah ke ATAS/KIRI (Misal: Index 4 -> 1)
+			// Item yang ada di posisi 1, 2, 3 harus GESER KANAN (+1)
+			if oldIndex > newIndex {
+				if projectStatuses[i].Index >= newIndex && projectStatuses[i].Index < oldIndex {
+					projectStatuses[i].Index += 1
+				}
+			}
+
+			// KASUS 2: Pindah ke BAWAH/KANAN (Misal: Index 1 -> 4)
+			// Item yang ada di posisi 2, 3, 4 harus GESER KIRI (-1)
+			if oldIndex < newIndex {
+				if projectStatuses[i].Index > oldIndex && projectStatuses[i].Index <= newIndex {
+					projectStatuses[i].Index -= 1
+				}
+			}
+		}
+		if err := s.repo.BulkUpdateStatuses(projectStatuses); err != nil {
+			return nil, err
+		}
+
+	} else {
+		if name != nil {
+			updates := map[string]interface{}{
+				"name": name,
+			}
+			if err := s.repo.UpdateStatus(targetStatus, updates); err != nil {
+				return nil, err
+			}
+			targetStatus.Name = *name
+		} else {
+			return targetStatus, nil // Nothing to update
+		}
+	}
+
+	return targetStatus, nil
+}
+
+func (s *taskService) DeleteStatus(id string) error {
+	status, err := s.repo.FindStatusByID(id)
+	if err != nil {
+		return errors.New("status not found")
+	}
+	return s.repo.DeleteStatus(status)
 }

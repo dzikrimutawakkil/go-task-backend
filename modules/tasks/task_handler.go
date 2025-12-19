@@ -145,3 +145,62 @@ func (h *Handler) FindStatusesByProject(c *gin.Context) {
 
 	utils.SendSuccess(c, "success", statuses)
 }
+
+// POST /projects/:id/status
+func (h *Handler) CreateStatus(c *gin.Context) {
+	projectIDStr := c.Param("id")
+	projectID, _ := strconv.Atoi(projectIDStr) // Helper convert string -> int
+
+	var req struct {
+		Name  string `json:"name" binding:"required"`
+		Index int    `json:"index"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.SendError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	status, err := h.service.CreateNewStatus(uint(projectID), req.Name, req.Index)
+	if err != nil {
+		utils.SendError(c, http.StatusInternalServerError, "Failed to create status")
+		return
+	}
+
+	utils.SendSuccess(c, "Status created", status)
+}
+
+// PATCH /statuses/:id
+func (h *Handler) UpdateStatus(c *gin.Context) {
+	id := c.Param("id")
+
+	var req struct {
+		Name  *string `json:"name"`
+		Index *int    `json:"index"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.SendError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	status, err := h.service.UpdateStatus(id, req.Name, req.Index)
+
+	if err != nil {
+		utils.SendError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	utils.SendSuccess(c, "Status updated successfully", status)
+}
+
+// DELETE /status/:id
+func (h *Handler) DeleteStatus(c *gin.Context) {
+	id := c.Param("id")
+	if err := h.service.DeleteStatus(id); err != nil {
+		// Cek jika error karena masih dipakai task
+		utils.SendError(c, http.StatusBadRequest, "Failed to delete (status might be in use)")
+		return
+	}
+	utils.SendSuccess(c, "Status deleted successfully")
+}
