@@ -7,6 +7,7 @@ type Status struct {
 	Name      string `json:"name"`
 	Index     int    `json:"index"`
 	ProjectID int    `json:"project_id"`
+	Version   int    `gorm:"default:1" json:"version"`
 }
 
 type Priority struct {
@@ -30,6 +31,7 @@ type Task struct {
 	AssigneeIDs []uint     `json:"assignee_ids" gorm:"-"`
 	StartDate   *time.Time `json:"start_date"`
 	EndDate     *time.Time `json:"end_date"`
+	Version     int        `gorm:"default:1" json:"version"`
 	CreatedAt   time.Time  `json:"created_at"`
 }
 

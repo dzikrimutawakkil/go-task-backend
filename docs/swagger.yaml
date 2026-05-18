@@ -1,0 +1,1416 @@
+basePath: /
+definitions:
+  auth.LoginRequest:
+    description: Request body for user login
+    properties:
+      email:
+        example: user@example.com
+        type: string
+      password:
+        example: securepassword123
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  auth.SignupRequest:
+    description: Request body for user signup
+    properties:
+      email:
+        example: user@example.com
+        type: string
+      password:
+        example: securepassword123
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  auth.User:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+    type: object
+  organizations.AcceptInvitationRequest:
+    description: Request body for accepting an organization invitation
+    properties:
+      token:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    required:
+    - token
+    type: object
+  organizations.CreateOrgRequest:
+    description: Request body for organization creation
+    properties:
+      name:
+        example: My Organization
+        type: string
+    required:
+    - name
+    type: object
+  organizations.InviteMemberRequest:
+    description: Request body for inviting a member to organization
+    properties:
+      email:
+        example: member@example.com
+        type: string
+    required:
+    - email
+    type: object
+  organizations.Organization:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      owner_id:
+        type: integer
+    type: object
+  organizations.OrganizationInvitation:
+    properties:
+      accepted_at:
+        type: string
+      created_at:
+        type: string
+      created_by:
+        type: integer
+      expires_at:
+        type: string
+      id:
+        type: integer
+      invited_email:
+        type: string
+      org_id:
+        type: integer
+      role:
+        type: string
+      status:
+        description: pending, accepted, expired, revoked
+        type: string
+      token:
+        type: string
+    type: object
+  organizations.ResendInvitationRequest:
+    description: Request body for resending an invitation
+    properties:
+      invitation_id:
+        example: 1
+        type: integer
+    required:
+    - invitation_id
+    type: object
+  organizations.UpdateMemberRoleRequest:
+    description: Request body for updating member role
+    properties:
+      role:
+        example: admin
+        type: string
+    required:
+    - role
+    type: object
+  projects.CreateProjectRequest:
+    description: Request body for project creation
+    properties:
+      description:
+        example: Complete redesign of company website
+        type: string
+      name:
+        example: Website Redesign
+        type: string
+    required:
+    - name
+    type: object
+  projects.Project:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      organization_id:
+        type: integer
+      version:
+        type: integer
+    type: object
+  tasks.CreateLabelRequest:
+    description: Request body for creating a label
+    properties:
+      color:
+        example: '#EF4444'
+        type: string
+      name:
+        example: Bug
+        type: string
+    required:
+    - name
+    type: object
+  tasks.CreateStatusRequest:
+    description: Request body for creating a status
+    properties:
+      index:
+        example: 2
+        type: integer
+      name:
+        example: In Review
+        type: string
+    required:
+    - name
+    type: object
+  tasks.CreateTaskRequest:
+    description: Request body for creating a task
+    properties:
+      end_date:
+        example: "2026-05-25T00:00:00Z"
+        type: string
+      label_ids:
+        items:
+          type: integer
+        type: array
+      priority_id:
+        example: 1
+        type: integer
+      project_id:
+        example: 1
+        type: integer
+      start_date:
+        example: "2026-05-20T00:00:00Z"
+        type: string
+      status_id:
+        example: 1
+        type: integer
+      title:
+        example: Implement login feature
+        type: string
+    required:
+    - project_id
+    - title
+    type: object
+  tasks.Label:
+    properties:
+      color:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      project_id:
+        type: integer
+    type: object
+  tasks.Priority:
+    properties:
+      color:
+        type: string
+      id:
+        type: integer
+      level:
+        type: integer
+      name:
+        type: string
+    type: object
+  tasks.Status:
+    properties:
+      id:
+        type: integer
+      index:
+        type: integer
+      name:
+        type: string
+      project_id:
+        type: integer
+      version:
+        type: integer
+    type: object
+  tasks.Task:
+    properties:
+      assignee_ids:
+        items:
+          type: integer
+        type: array
+      created_at:
+        type: string
+      end_date:
+        type: string
+      id:
+        type: integer
+      priority:
+        $ref: '#/definitions/tasks.Priority'
+      priority_id:
+        type: integer
+      project_id:
+        type: integer
+      start_date:
+        type: string
+      status:
+        $ref: '#/definitions/tasks.Status'
+      status_id:
+        type: integer
+      title:
+        type: string
+      version:
+        type: integer
+    type: object
+  tasks.UpdateLabelRequest:
+    description: Request body for updating a label
+    properties:
+      color:
+        example: '#10B981'
+        type: string
+      name:
+        example: Feature
+        type: string
+    type: object
+  tasks.UpdateStatusRequest:
+    description: Request body for updating a status
+    properties:
+      index:
+        example: 3
+        type: integer
+      name:
+        example: Done
+        type: string
+    type: object
+  tasks.UpdateTaskRequest:
+    description: Request body for updating a task
+    properties:
+      assignee_ids:
+        items:
+          type: integer
+        type: array
+      end_date:
+        example: "2026-05-30T00:00:00Z"
+        type: string
+      expected_version:
+        example: 1
+        type: integer
+      label_ids:
+        items:
+          type: integer
+        type: array
+      priority_id:
+        example: 2
+        type: integer
+      start_date:
+        example: "2026-05-20T00:00:00Z"
+        type: string
+      status_id:
+        example: 2
+        type: integer
+      title:
+        example: Updated task title
+        type: string
+    type: object
+  utils.APIResponse:
+    description: Standard API response envelope used by all endpoints
+    properties:
+      data:
+        description: Response payload, omitted when nil
+      message:
+        description: Human-readable message describing the result
+        type: string
+      success:
+        description: True if the request was successful
+        type: boolean
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: 'JWT Bearer token. Format: ''Bearer {token}'''
+  title: GoTask API
+  version: 1.0.0
+paths:
+  /health:
+    get:
+      description: Returns 200 OK when the server process is alive. Used for basic
+        liveness and Docker HEALTHCHECK.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: server is alive
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Liveness check
+      tags:
+      - Health
+  /invite/{token}:
+    delete:
+      description: Revoke an existing invitation token, preventing it from being accepted.
+        Requires owner or admin role.
+      parameters:
+      - description: Invitation token to revoke
+        in: path
+        name: token
+        required: true
+        type: string
+      - description: Organization ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Invitation revoked successfully
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "400":
+          description: Token is required
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "403":
+          description: Insufficient permission
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Revoke an invitation
+      tags:
+      - Invitations
+  /invite/accept:
+    post:
+      consumes:
+      - application/json
+      description: Accept an organization invitation using the token received via
+        email. The authenticated user must match the invited email.
+      parameters:
+      - description: Accept invitation payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/organizations.AcceptInvitationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully joined the organization
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/organizations.Organization'
+              type: object
+        "400":
+          description: Invalid token or already used
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "401":
+          description: User email does not match invitation
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "410":
+          description: Invitation has expired or been revoked
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Accept an invitation
+      tags:
+      - Invitations
+  /invite/resend:
+    post:
+      consumes:
+      - application/json
+      description: Resend an invitation email to the previously invited email address.
+        Extends the expiry time.
+      parameters:
+      - description: Resend invitation payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/organizations.ResendInvitationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Invitation resent successfully
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "400":
+          description: Invalid invitation ID
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Resend an invitation
+      tags:
+      - Invitations
+  /labels/{id}:
+    delete:
+      description: Delete a label. The label will be removed from all associated tasks.
+      parameters:
+      - description: Label ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Organization ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Label deleted successfully
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to delete label
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a label
+      tags:
+      - Labels
+    patch:
+      consumes:
+      - application/json
+      description: Update a label's name or color.
+      parameters:
+      - description: Label ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Label update payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/tasks.UpdateLabelRequest'
+      - description: Organization ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Label updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/tasks.Label'
+              type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to update label
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a label
+      tags:
+      - Labels
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate a user with email and password. Returns a JWT token
+        on success.
+      parameters:
+      - description: Login payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "401":
+          description: Invalid credentials
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      summary: User login
+      tags:
+      - Auth
+  /organizations:
+    post:
+      consumes:
+      - application/json
+      description: Create a new organization. The requesting user automatically becomes
+        the owner.
+      parameters:
+      - description: Organization payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/organizations.CreateOrgRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Organization created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/organizations.Organization'
+              type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to create organization
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Create organization
+      tags:
+      - Organizations
+  /organizations/invitations:
+    get:
+      description: Retrieve all pending invitations for the organization. Requires
+        owner or admin role.
+      parameters:
+      - description: Organization ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/organizations.OrganizationInvitation'
+                  type: array
+              type: object
+        "400":
+          description: Missing organization header
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "403":
+          description: Insufficient permission
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to fetch invitations
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: List pending invitations
+      tags:
+      - Invitations
+  /organizations/invite:
+    post:
+      consumes:
+      - application/json
+      description: Send an invitation email to add a new member to the organization.
+        Requires owner or admin role.
+      parameters:
+      - description: Invitation payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/organizations.InviteMemberRequest'
+      - description: Organization ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Member added successfully
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "400":
+          description: Validation error or invitation failed
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "403":
+          description: Insufficient permission
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Invite a member
+      tags:
+      - Organizations
+  /organizations/members:
+    get:
+      description: Retrieve all members of the organization with their roles.
+      parameters:
+      - description: Organization ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "400":
+          description: Missing organization header
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to fetch members
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get organization members
+      tags:
+      - Organizations
+  /organizations/members/{user_id}:
+    delete:
+      description: Remove a member from the organization. Requires owner or admin
+        role. Owner cannot be removed.
+      parameters:
+      - description: User ID to remove
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      - description: Organization ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Member removed successfully
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "400":
+          description: Invalid user ID format
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "403":
+          description: Insufficient permission or cannot remove owner
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove a member
+      tags:
+      - Organizations
+    patch:
+      consumes:
+      - application/json
+      description: Update a member's role within the organization. Requires owner
+        or admin role. Cannot change owner's role.
+      parameters:
+      - description: User ID to update
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      - description: Role update payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/organizations.UpdateMemberRoleRequest'
+      - description: Organization ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Role updated successfully
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "400":
+          description: Invalid role or user ID
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "403":
+          description: Insufficient permission or cannot change owner role
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Update member role
+      tags:
+      - Organizations
+  /projects:
+    get:
+      description: Retrieve all projects belonging to the current organization.
+      parameters:
+      - description: Organization ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/projects.Project'
+                  type: array
+              type: object
+        "400":
+          description: Missing organization header
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to fetch projects
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: List projects
+      tags:
+      - Projects
+    post:
+      consumes:
+      - application/json
+      description: Create a new project within the organization.
+      parameters:
+      - description: Project payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/projects.CreateProjectRequest'
+      - description: Organization ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Project created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/projects.Project'
+              type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to create project
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a project
+      tags:
+      - Projects
+  /projects/{id}:
+    delete:
+      description: Delete a project and all its associated tasks. Requires owner or
+        admin role.
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Organization ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Project deleted successfully
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "403":
+          description: Insufficient permission
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "404":
+          description: Project not found
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a project
+      tags:
+      - Projects
+  /projects/{id}/labels:
+    get:
+      description: Retrieve all labels belonging to a specific project.
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Organization ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: success
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "400":
+          description: Missing organization header
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to fetch labels
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: List project labels
+      tags:
+      - Labels
+    post:
+      consumes:
+      - application/json
+      description: Create a new label for categorizing tasks within a project.
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Label payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/tasks.CreateLabelRequest'
+      - description: Organization ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Label created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/tasks.Label'
+              type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to create label
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a label
+      tags:
+      - Labels
+  /projects/{id}/status:
+    get:
+      description: Retrieve all task statuses for a specific project.
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Organization ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: success
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to fetch statuses
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: List project statuses
+      tags:
+      - Statuses
+    post:
+      consumes:
+      - application/json
+      description: Create a new status (e.g., "To Do", "In Progress", "Done") within
+        a project.
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Status payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/tasks.CreateStatusRequest'
+      - description: Organization ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Status created
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/tasks.Status'
+              type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to create status
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a status
+      tags:
+      - Statuses
+  /projects/{id}/tasks:
+    get:
+      description: Retrieve all tasks belonging to a specific project with pagination.
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 50
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - description: Organization ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: success
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "400":
+          description: Missing organization header
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to fetch tasks
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: List tasks by project
+      tags:
+      - Tasks
+  /ready:
+    get:
+      description: Checks database connectivity. Returns 200 when DB is reachable,
+        503 when not. Used for load balancer readiness probes.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: server is ready
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: server is not ready
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Readiness check
+      tags:
+      - Health
+  /signup:
+    post:
+      consumes:
+      - application/json
+      description: Register a new user with email and password. Returns the created
+        user object.
+      parameters:
+      - description: Signup payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth.SignupRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Signup successful
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/auth.User'
+              type: object
+        "400":
+          description: Validation error or email already exists
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      summary: User registration
+      tags:
+      - Auth
+  /status/{id}:
+    delete:
+      description: Delete a status. Fails if the status is still in use by any task.
+      parameters:
+      - description: Status ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Status deleted successfully
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "400":
+          description: Failed to delete (status might be in use)
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a status
+      tags:
+      - Statuses
+    patch:
+      consumes:
+      - application/json
+      description: Update a status name or position (index). Useful for reordering
+        statuses in a Kanban board.
+      parameters:
+      - description: Status ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Status update payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/tasks.UpdateStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Status updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/tasks.Status'
+              type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to update status
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a status
+      tags:
+      - Statuses
+  /tasks:
+    post:
+      consumes:
+      - application/json
+      description: Create a new task within a project.
+      parameters:
+      - description: Task payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/tasks.CreateTaskRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Task created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/tasks.Task'
+              type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to create task
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a task
+      tags:
+      - Tasks
+  /tasks/{id}:
+    delete:
+      description: Permanently delete a task.
+      parameters:
+      - description: Task ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Task deleted successfully
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to delete task
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a task
+      tags:
+      - Tasks
+    patch:
+      consumes:
+      - application/json
+      description: Update a task's fields. Supports optimistic locking via expected_version.
+      parameters:
+      - description: Task ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Task update payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/tasks.UpdateTaskRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Task updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/tasks.Task'
+              type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to update task
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a task
+      tags:
+      - Tasks
+  /tasks/search:
+    get:
+      description: Full-text search across task titles with optional filters for assignee,
+        status, priority, project, and date ranges.
+      parameters:
+      - description: Search query
+        in: query
+        name: q
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page (max 100)
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by assignee
+        in: query
+        name: assignee_id
+        type: integer
+      - description: Filter by status
+        in: query
+        name: status_id
+        type: integer
+      - description: Filter by priority
+        in: query
+        name: priority_id
+        type: integer
+      - description: Filter by project
+        in: query
+        name: project_id
+        type: integer
+      - description: Filter by due date start (YYYY-MM-DD)
+        in: query
+        name: due_from
+        type: string
+      - description: Filter by due date end (YYYY-MM-DD)
+        in: query
+        name: due_to
+        type: string
+      - description: Filter by created date start (RFC3339)
+        in: query
+        name: created_from
+        type: string
+      - description: Filter by created date end (RFC3339)
+        in: query
+        name: created_to
+        type: string
+      - description: Filter by labels (comma-separated IDs)
+        in: query
+        name: label_ids
+        type: string
+      - description: Organization ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: success
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "400":
+          description: Missing organization header
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to search tasks
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Search tasks
+      tags:
+      - Tasks
+schemes:
+- http
+- https
+swagger: "2.0"

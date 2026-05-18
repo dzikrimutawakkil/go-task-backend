@@ -1,6 +1,7 @@
 package organizations
 
 import (
+	"gotask-backend/models"
 	"time"
 )
 
@@ -12,7 +13,15 @@ type Organization struct {
 }
 
 type OrganizationUser struct {
-	OrganizationID uint `gorm:"primaryKey"`
-	UserID         uint `gorm:"primaryKey"`
-	CreatedAt      time.Time
+	OrganizationID uint        `gorm:"primaryKey"`
+	UserID         uint        `gorm:"primaryKey"`
+	Role           models.Role `gorm:"type:varchar(20);default:member" json:"role"`
+	JoinedAt       time.Time   `json:"joined_at"`
 }
+
+// Role constants for convenience
+const (
+	RoleOwner  = models.RoleOwner
+	RoleAdmin  = models.RoleAdmin
+	RoleMember = models.RoleMember
+)

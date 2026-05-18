@@ -2,13 +2,13 @@ package config
 
 import (
 	"fmt"
-	"gotask-backend/modules/auth"
-	"gotask-backend/modules/organizations"
-	"gotask-backend/modules/projects"
-	"gotask-backend/modules/tasks"
 	"log"
 	"os"
+	"path/filepath"
+	"strings"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -16,10 +16,11 @@ import (
 
 var DB *gorm.DB
 
+// ConnectDatabase initializes the GORM database connection and runs migrations.
 func ConnectDatabase() {
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Println("No .env file found, using system env variables")
 	}
 
 	host := os.Getenv("DB_HOST")
@@ -36,30 +37,70 @@ func ConnectDatabase() {
 		panic("Failed to connect to database!")
 	}
 
-	database.AutoMigrate(&auth.User{},
-		&projects.Project{}, &tasks.Task{},
-		&tasks.Status{}, &tasks.Priority{}, &tasks.TaskUser{},
-		&organizations.Organization{}, &organizations.OrganizationUser{})
-
 	DB = database
 
-	seedPriority()
+	// Q10: Run golang-migrate migrations on startup
+	runMigrations()
 
-	fmt.Println("Database connected and seeded!")
+	fmt.Println("Database connected and migrated!")
 }
 
-func seedPriority() {
-	priorities := []tasks.Priority{
-		{Name: "Low", Level: 1, Color: "#808080"},    // Gray
-		{Name: "Medium", Level: 2, Color: "#0000FF"}, // Blue
-		{Name: "High", Level: 3, Color: "#FFA500"},   // Orange
-		{Name: "Urgent", Level: 4, Color: "#FF0000"}, // Red
+// runMigrations runs all pending SQL migrations using golang-migrate.
+// Exits the process if migrations fail (fail-fast — do not start with bad schema).
+func runMigrations() {
+	migrationURL := os.Getenv("MIGRATION_URL")
+	if migrationURL == "" {
+		// Build migration URL from env vars
+		host := os.Getenv("DB_HOST")
+		user := os.Getenv("DB_USER")
+		password := os.Getenv("DB_PASSWORD")
+		dbname := os.Getenv("DB_NAME")
+		port := os.Getenv("DB_PORT")
+		migrationURL = fmt.Sprintf(
+			"postgres://%s:%s@%s:%s/%s?sslmode=disable",
+			user, password, host, port, dbname,
+		)
 	}
 
-	for _, p := range priorities {
-		var exists tasks.Priority
-		if DB.Where("name = ?", p.Name).First(&exists).Error != nil {
-			DB.Create(&p)
+	// Get the path to the migrations folder (relative to working directory)
+	execDir, err := os.Getwd()
+	if err != nil {
+		log.Fatal("Cannot determine working directory for migrations")
+	}
+	migrationsPath := os.Getenv("MIGRATIONS_PATH")
+	if migrationsPath == "" {
+		// Default: look for migrations/ folder in project root
+		migrationsPath = filepath.Join(execDir, "migrations")
+	}
+
+	// Strip file:// prefix if present (golang-migrate expects a path or file:// scheme)
+	migrationsSource := "file://" + strings.TrimPrefix(migrationsPath, execDir)
+	if !strings.HasPrefix(migrationsPath, "file://") {
+		migrationsSource = "file://" + migrationsPath
+	}
+
+	m, err := migrate.New(migrationsSource, migrationURL)
+	if err != nil {
+		log.Fatalf("Failed to create migration instance: %v", err)
+	}
+	defer func() {
+		if _, err := m.Close(); err != nil {
+			log.Printf("Warning: failed to close migrate instance: %v", err)
+		}
+	}()
+
+	// Run up migrations
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		log.Fatalf("Migration failed: %v", err)
+	}
+
+	// Log current version
+	version, dirty, verErr := m.Version()
+	if verErr == nil {
+		if dirty {
+			log.Printf("WARNING: Database is at version %d and marked DIRTY", version)
+		} else {
+			log.Printf("Database migration: version=%d, dirty=false", version)
 		}
 	}
 }

@@ -6,11 +6,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Define the standard structure for ALL responses
+// APIResponse represents the standard API response envelope.
+// @Description Standard API response envelope used by all endpoints
 type APIResponse struct {
-	Success bool        `json:"success"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"` // "omitempty" hides this field if it's null
+	// True if the request was successful
+	Success bool `json:"success"`
+	// Human-readable message describing the result
+	Message string `json:"message"`
+	// Response payload, omitted when nil
+	Data interface{} `json:"data,omitempty"`
 }
 
 func SendSuccess(c *gin.Context, message string, data ...interface{}) {

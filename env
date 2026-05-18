@@ -1,0 +1,6 @@
+DB_HOST=127.0.0.1
+DB_USER=postgres
+DB_PASSWORD=dzikri12354
+DB_NAME=gotask
+DB_PORT=5432
+SECRET_KEY=inipasswordkuat

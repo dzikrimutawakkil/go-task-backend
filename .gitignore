@@ -6,3 +6,10 @@
 *.dll
 documentation.txt
 microservice-migration.txt
+
+#Claude related files
+.claude
+CLAUDE.md
+CLAUDE.template.md
+claude-cheat-sheet.md
+CHANGELOG.md

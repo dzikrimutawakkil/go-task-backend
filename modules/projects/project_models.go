@@ -7,5 +7,6 @@ type Project struct {
 	Name           string    `json:"name"`
 	Description    string    `json:"description"`
 	OrganizationID uint      `json:"organization_id"`
+	Version        int       `gorm:"default:1" json:"version"`
 	CreatedAt      time.Time `json:"created_at"`
 }

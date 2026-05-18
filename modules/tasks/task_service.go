@@ -12,6 +12,7 @@ type TaskService interface {
 	GetTasksByProject(projectID string, orgID string, page int, limit int) ([]Task, int64, error)
 	UpdateTask(id string, input UpdateTaskInput) (*Task, error)
 	DeleteTask(id string) error
+	SearchTasks(orgID string, query string, filters TaskFilters, page int, limit int) ([]Task, int64, error)
 
 	CreateDefaultStatuses(projectID uint) error
 	GetStatuses(projectID string) ([]Status, error)
@@ -20,15 +21,32 @@ type TaskService interface {
 	DeleteStatus(id string) error
 }
 
+// VersionConflictError is returned when a concurrent modification is detected.
+type VersionConflictError struct {
+	CurrentVersion uint
+}
+
+// Error implements error interface.
+func (e *VersionConflictError) Error() string {
+	return "Task was modified by another user. Please refresh and try again."
+}
+
+// Conflict returns true for VersionConflictError.
+func (e *VersionConflictError) Conflict() bool {
+	return true
+}
+
 type taskService struct {
 	repo        TaskRepository
 	authService auth.AuthService
+	labelRepo   LabelRepository
 }
 
-func NewTaskService(repo TaskRepository, authS auth.AuthService) TaskService {
+func NewTaskService(repo TaskRepository, authS auth.AuthService, labelRepo LabelRepository) TaskService {
 	return &taskService{
 		repo:        repo,
 		authService: authS,
+		labelRepo:   labelRepo,
 	}
 }
 
@@ -39,15 +57,18 @@ type CreateTaskInput struct {
 	PriorityID uint
 	StartDate  *time.Time
 	EndDate    *time.Time
+	LabelIDs   []uint
 }
 
 type UpdateTaskInput struct {
-	Title       *string
-	StatusID    *uint
-	PriorityID  *uint
-	AssigneeIDs []uint
-	StartDate   *time.Time
-	EndDate     *time.Time
+	Title           *string
+	StatusID        *uint
+	PriorityID      *uint
+	AssigneeIDs     []uint
+	StartDate       *time.Time
+	EndDate         *time.Time
+	LabelIDs        []uint
+	ExpectedVersion *uint
 }
 
 func (s *taskService) CreateTask(input CreateTaskInput) (*Task, error) {
@@ -70,6 +91,11 @@ func (s *taskService) CreateTask(input CreateTaskInput) (*Task, error) {
 
 	if err := s.repo.Create(&task); err != nil {
 		return nil, err
+	}
+
+	// Handle Labels
+	if len(input.LabelIDs) > 0 {
+		_ = s.labelRepo.SetTaskLabels(task.ID, input.LabelIDs)
 	}
 
 	// Return fully loaded task
@@ -114,8 +140,25 @@ func (s *taskService) UpdateTask(id string, input UpdateTaskInput) (*Task, error
 	}
 
 	if len(updates) > 0 {
-		if err := s.repo.Update(task, updates); err != nil {
-			return nil, err
+		if input.ExpectedVersion != nil {
+			// Q9: Optimistic locking — use version check
+			success, err := s.repo.UpdateWithVersion(task, updates, *input.ExpectedVersion)
+			if err != nil {
+				return nil, err
+			}
+			if !success {
+				// Refresh task to get current version
+				current, _ := s.repo.FindByID(id)
+				currentVersion := 1
+				if current != nil {
+					currentVersion = int(current.Version)
+				}
+				return nil, &VersionConflictError{CurrentVersion: uint(currentVersion)}
+			}
+		} else {
+			if err := s.repo.Update(task, updates); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -137,6 +180,11 @@ func (s *taskService) UpdateTask(id string, input UpdateTaskInput) (*Task, error
 		s.repo.AssignUsers(task, validIDs)
 	}
 
+	// Handle Labels Sync
+	if input.LabelIDs != nil {
+		_ = s.labelRepo.SetTaskLabels(task.ID, input.LabelIDs)
+	}
+
 	return s.repo.FindByID(id)
 }
 
@@ -146,6 +194,11 @@ func (s *taskService) DeleteTask(id string) error {
 		return errors.New("task not found")
 	}
 	return s.repo.Delete(task)
+}
+
+// SearchTasks performs full-text search and filtering for tasks.
+func (s *taskService) SearchTasks(orgID string, query string, filters TaskFilters, page int, limit int) ([]Task, int64, error) {
+	return s.repo.SearchTasks(orgID, query, filters, page, limit)
 }
 
 // Helper function to convert uint ID to string
