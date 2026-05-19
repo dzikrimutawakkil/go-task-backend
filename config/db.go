@@ -5,10 +5,10 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -73,13 +73,17 @@ func runMigrations() {
 		migrationsPath = filepath.Join(execDir, "migrations")
 	}
 
-	// Strip file:// prefix if present (golang-migrate expects a path or file:// scheme)
-	migrationsSource := "file://" + strings.TrimPrefix(migrationsPath, execDir)
-	if !strings.HasPrefix(migrationsPath, "file://") {
-		migrationsSource = "file://" + migrationsPath
-	}
+	// IMPORTANT: file:// URLs MUST use forward slashes, NOT Windows backslashes
+	migrationsPathClean := filepath.ToSlash(migrationsPath)
 
-	m, err := migrate.New(migrationsSource, migrationURL)
+	// Use the file driver to open the migrations directory
+	fSource, err := (&file.File{}).Open(migrationsPathClean)
+	if err != nil {
+		log.Fatalf("Failed to open migrations source directory: %v", err)
+	}
+	defer fSource.Close()
+
+	m, err := migrate.NewWithSourceInstance("file", fSource, migrationURL)
 	if err != nil {
 		log.Fatalf("Failed to create migration instance: %v", err)
 	}

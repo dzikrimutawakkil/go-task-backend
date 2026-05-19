@@ -8,11 +8,11 @@ Panduan lengkap untuk menjalankan GoTask Backend dari awal (setup database hingg
 
 Pastikan komputer kamu sudah install:
 
-| Tools | Version | Cara Install |
-|-------|---------|-------------|
-| Go | 1.24.0+ | [go.dev/dl](https://go.dev/dl) |
-| Docker | latest | [docker.com/get-started](https://docker.com/get-started) |
-| Docker Compose | v2+ | Sudah termasuk di Docker Desktop |
+| Tools          | Version | Cara Install                                             |
+| -------------- | ------- | -------------------------------------------------------- |
+| Go             | 1.24.0+ | [go.dev/dl](https://go.dev/dl)                           |
+| Docker         | latest  | [docker.com/get-started](https://docker.com/get-started) |
+| Docker Compose | v2+     | Sudah termasuk di Docker Desktop                         |
 
 ---
 
@@ -29,10 +29,10 @@ Atau buat manual dengan isi:
 
 ```env
 # DATABASE
-DB_HOST=localhost
+DB_HOST=127.0.0.1
 DB_USER=postgres
-DB_PASSWORD=postgres
-DB_NAME=gotaskdb
+DB_PASSWORD=dzikri12354
+DB_NAME=gotask
 DB_PORT=5432
 
 # JWT AUTHENTICATION
@@ -102,15 +102,17 @@ Kalau mau jalanin app langsung di local (tanpa container):
 Sebelum jalanin app, database `gotaskdb` harus sudah ada:
 
 ### Kalau pakai Docker Compose (otomatis dibuat):
+
 Sudah dihandle sama `docker-compose.yml` - database otomatis dibuat saat container start.
 
 ### Kalau setup manual di local:
+
 ```bash
 # Login ke PostgreSQL
 psql -U postgres
 
-# Create database
-CREATE DATABASE gotaskdb;
+# Create database (nama: gotask, bukan gotaskdb)
+CREATE DATABASE gotask;
 
 # Keluar
 \q
@@ -170,6 +172,8 @@ Buka browser dan visit:
 http://localhost:8080/swagger/index.html
 ```
 
+> ⚠️ **Catatan:** Gunakan path `/swagger/index.html` (BUKAN `/swagger/*`) untuk mengakses Swagger UI.
+
 Kamu akan lihat Swagger UI dengan semua endpoint terdokumentasi.
 
 ### Cara Test Endpoint dengan JWT:
@@ -202,6 +206,7 @@ Kamu akan lihat Swagger UI dengan semua endpoint terdokumentasi.
 ## 🎨 Langkah 7: Test Flow Lengkap
 
 ### 1. Buat User & Login
+
 ```bash
 # Signup
 curl -X POST http://localhost:8080/signup \
@@ -216,6 +221,7 @@ curl -X POST http://localhost:8080/login \
 ```
 
 ### 2. Create Organization
+
 ```bash
 curl -X POST http://localhost:8080/organizations \
   -H "Content-Type: application/json" \
@@ -225,6 +231,7 @@ curl -X POST http://localhost:8080/organizations \
 ```
 
 ### 3. Create Project
+
 ```bash
 curl -X POST http://localhost:8080/projects \
   -H "Content-Type: application/json" \
@@ -234,6 +241,7 @@ curl -X POST http://localhost:8080/projects \
 ```
 
 ### 4. Create Task
+
 ```bash
 curl -X POST http://localhost:8080/tasks \
   -H "Content-Type: application/json" \
@@ -253,6 +261,7 @@ curl -X POST http://localhost:8080/tasks \
 ### Problem: "Failed to connect to database!"
 
 **Solusi:**
+
 ```bash
 # Cek apakah PostgreSQL container running
 docker ps | grep postgres
@@ -267,6 +276,7 @@ go run main.go
 ### Problem: Port 8080 sudah dipake
 
 **Solusi:**
+
 ```bash
 # Cari process yang pake port 8080
 netstat -ano | findstr :8080
@@ -282,6 +292,7 @@ ports:
 ### Problem: "No .env file found"
 
 **Solusi:**
+
 ```bash
 # Pastikan .env ada di root folder
 dir .env
@@ -293,22 +304,36 @@ copy .env.example .env
 ### Problem: Migration failed
 
 **Solusi:**
+
 ```bash
-# Drop dan recreate database
+# Drop dan recreate database (fresh start)
 docker-compose down -v   # Hapus semua data!
 docker-compose up db -d   # Start ulang DB
 go run main.go           # Run ulang app (migration otomatis)
 ```
 
-### Problem: Swagger gak muncul
+**Opsi alternatif (jika database sudah ada tapi migration dirty):**
+
+```bash
+# Reset migration state dan drop semua tabel
+PGPASSWORD=dzikri12354 psql -U postgres -h 127.0.0.1 -d gotask -c "DROP TABLE IF EXISTS task_users, tasks, statuses, projects, organization_users, project_users, organizations, priorities, labels, invitations, users, schema_migrations CASCADE;"
+go run main.go
+```
+
+### Problem: Swagger gak muncul / panic: wildcards must be named
 
 **Solusi:**
+
 ```bash
 # Cek endpoint JSON spec
-curl http://localhost:8080/swagger/doc.json
+curl http://localhost:8080/swagger/index.html
 
-# Kalau error, regenerate docs
-go run github.com/swaggo/swag/cmd/swag@latest init -g main.go -o docs --parseDependency
+# Kalau error 404, cek apakah app sudah running
+curl http://localhost:8080/health
+
+# Kalau panic "wildcards must be named" muncul saat run:
+# Update main.go line swagger route dari "/swagger/*" ke "/swagger/*any"
+# (nama wildcard tidak boleh kosong di versi Gin tertentu)
 go run main.go
 ```
 
