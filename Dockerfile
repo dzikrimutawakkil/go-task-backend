@@ -1,31 +1,82 @@
-# 1. Build Stage (Compiling the code)
+# Multi-stage Dockerfile for GoTask Backend
+# Optimized for production with minimal image size and security best practices
+
+# ============================================
+# Stage 1: Build
+# ============================================
 FROM golang:1.24-alpine AS builder
 
-WORKDIR /app
+# Install build dependencies
+RUN apk add --no-cache git ca-certificates tzdata
 
-# Copy dependency files first (better caching)
+WORKDIR /build
+
+# Copy go.mod and go.sum first for better Docker layer caching
 COPY go.mod go.sum ./
 RUN go mod download
 
 # Copy the rest of the source code
 COPY . .
 
-# Build the application binary named "main"
-RUN go build -o main .
+# Build the binary with optimizations
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-w -s" \
+    -o gotask-backend \
+    main.go
 
-# 2. Run Stage (Running the binary in a small container)
-FROM alpine:latest
+# Generate Swagger docs (if swag is available)
+RUN which swag && swag init -g main.go -o docs/generated || true
 
-WORKDIR /root/
+# ============================================
+# Stage 2: Production
+# ============================================
+FROM alpine:3.19 AS production
 
-# Copy the binary from the builder stage
-COPY --from=builder /app/main .
+# Install runtime dependencies only
+RUN apk add --no-cache ca-certificates tzdata
 
-# Copy the .env file (Optional: usually env vars are set in docker-compose)
-COPY --from=builder /app/.env . 
+# Create non-root user for security
+RUN adduser -D -g '' appuser
 
-# Expose the port your app runs on
+WORKDIR /app
+
+# Set ownership
+RUN chown -R appuser:appuser /app
+
+# Copy binary from builder stage
+COPY --from=builder /build/gotask-backend .
+
+# Copy .env.example as template (actual .env should be mounted via docker-compose or secrets)
+COPY --from=builder /build/.env.example .
+
+# Switch to non-root user
+USER appuser
+
+# Expose the port
 EXPOSE 8080
 
-# Command to run the app
-CMD ["./main"]
+# Healthcheck for container orchestration
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+
+# Run as non-root user
+ENV GIN_MODE=release
+ENV PORT=8080
+
+ENTRYPOINT ["./gotask-backend"]
+CMD ["--env", "production"]
+
+# ============================================
+# Stage 3: Development (optional)
+# ============================================
+FROM builder AS development
+
+WORKDIR /app
+
+# Copy source code for hot reload (use with volume mounts)
+COPY . .
+
+# Expose debug port
+EXPOSE 8080 40000
+
+CMD ["air", "-c", ".air.toml"]
