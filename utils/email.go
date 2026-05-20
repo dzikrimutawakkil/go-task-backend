@@ -63,8 +63,9 @@ func SendEmail(to, subject, body string) error {
 		return fmt.Errorf("failed to connect to SMTP: %w", err)
 	}
 	defer func() {
-		// Perbaikan: abaikan error client.Close() di defer secara eksplisit
-		_ = client.Close()
+		if closeErr := client.Close(); closeErr != nil {
+			GetLogger().Warn("Failed to close SMTP client", "error", closeErr)
+		}
 	}()
 
 	if err := client.StartTLS(tlsConfig); err != nil {
@@ -93,12 +94,12 @@ func SendEmail(to, subject, body string) error {
 
 	_, err = writer.Write([]byte(msg))
 	if err != nil {
-		// Tutup writer jika gagal write, tapi jangan pedulikan error tutupnya karena sudah error
-		_ = writer.Close() 
+		if closeErr := writer.Close(); closeErr != nil {
+			GetLogger().Warn("Failed to close data writer after write error", "error", closeErr)
+		}
 		return fmt.Errorf("failed to write email body: %w", err)
 	}
 
-	// Perbaikan: writer.Close() HARUS dicek karena ini yang memicu pengiriman aktual (commit)
 	if err := writer.Close(); err != nil {
 		return fmt.Errorf("failed to close data writer: %w", err)
 	}

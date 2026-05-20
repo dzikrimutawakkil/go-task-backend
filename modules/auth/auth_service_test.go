@@ -58,8 +58,10 @@ func TestHashPassword(t *testing.T) {
 
 func TestVerifyPassword(t *testing.T) {
 	password := "testpassword123"
-	// Abaikan error saat setup test
-	hash, _ := bcrypt.GenerateFromPassword([]byte(password), 10)
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), 10)
+	if err != nil {
+		t.Fatalf("Failed to generate hash in setup: %v", err)
+	}
 
 	testCases := []struct {
 		name     string
@@ -101,9 +103,13 @@ func TestVerifyPassword(t *testing.T) {
 }
 
 func TestGenerateJWT(t *testing.T) {
-	_ = os.Setenv("SECRET_KEY", "test-secret-key-for-jwt-validation")
+	if err := os.Setenv("SECRET_KEY", "test-secret-key-for-jwt-validation"); err != nil {
+		t.Fatalf("Failed to set env var: %v", err)
+	}
 	defer func() {
-		_ = os.Unsetenv("SECRET_KEY")
+		if err := os.Unsetenv("SECRET_KEY"); err != nil {
+			t.Logf("Failed to unset env var: %v", err)
+		}
 	}()
 
 	userID := uint(1)
@@ -137,9 +143,13 @@ func TestGenerateJWT(t *testing.T) {
 }
 
 func TestValidateJWT(t *testing.T) {
-	_ = os.Setenv("SECRET_KEY", "test-secret-key-for-jwt-validation")
+	if err := os.Setenv("SECRET_KEY", "test-secret-key-for-jwt-validation"); err != nil {
+		t.Fatalf("Failed to set env var: %v", err)
+	}
 	defer func() {
-		_ = os.Unsetenv("SECRET_KEY")
+		if err := os.Unsetenv("SECRET_KEY"); err != nil {
+			t.Logf("Failed to unset env var: %v", err)
+		}
 	}()
 
 	secretKey := []byte(os.Getenv("SECRET_KEY"))
