@@ -1751,22 +1751,39 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "email",
-                "password"
+                "name",
+                "password",
+                "phone"
             ],
             "properties": {
+                "address": {
+                    "type": "string",
+                    "example": "Jl. Sudirman No.123, Jakarta"
+                },
                 "email": {
                     "type": "string",
                     "example": "user@example.com"
                 },
+                "name": {
+                    "type": "string",
+                    "example": "John Doe"
+                },
                 "password": {
                     "type": "string",
                     "example": "securepassword123"
+                },
+                "phone": {
+                    "type": "string",
+                    "example": "+628123456789"
                 }
             }
         },
         "auth.User": {
             "type": "object",
             "properties": {
+                "address": {
+                    "type": "string"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -1775,6 +1792,12 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
                 }
             }
         },

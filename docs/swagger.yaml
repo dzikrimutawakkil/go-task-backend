@@ -16,24 +16,41 @@ definitions:
   auth.SignupRequest:
     description: Request body for user signup
     properties:
+      address:
+        example: Jl. Sudirman No.123, Jakarta
+        type: string
       email:
         example: user@example.com
+        type: string
+      name:
+        example: John Doe
         type: string
       password:
         example: securepassword123
         type: string
+      phone:
+        example: "+628123456789"
+        type: string
     required:
     - email
+    - name
     - password
+    - phone
     type: object
   auth.User:
     properties:
+      address:
+        type: string
       created_at:
         type: string
       email:
         type: string
       id:
         type: integer
+      name:
+        type: string
+      phone:
+        type: string
     type: object
   organizations.AcceptInvitationRequest:
     description: Request body for accepting an organization invitation

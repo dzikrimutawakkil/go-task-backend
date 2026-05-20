@@ -113,8 +113,8 @@ func TestTaskModel(t *testing.T) {
 
 	t.Run("task should support assignees", func(t *testing.T) {
 		task := Task{
-			ID:           1,
-			AssigneeIDs:  []uint{1, 2, 3},
+			ID:          1,
+			AssigneeIDs: []uint{1, 2, 3},
 		}
 
 		if len(task.AssigneeIDs) != 3 {

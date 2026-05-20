@@ -72,11 +72,11 @@ func TestProjectServiceInterface(t *testing.T) {
 		// Verify interface methods exist
 		_ = func() interface{} {
 			return struct {
-				GetProjects    func(orgID string) ([]Project, error)
+				GetProjects   func(orgID string) ([]Project, error)
 				CreateProject func(input CreateProjectInput, userID uint) (*Project, error)
 				DeleteProject func(id string, orgID string, requesterID uint) error
 			}{
-				GetProjects:    func(orgID string) ([]Project, error) { return nil, nil },
+				GetProjects:   func(orgID string) ([]Project, error) { return nil, nil },
 				CreateProject: func(input CreateProjectInput, userID uint) (*Project, error) { return nil, nil },
 				DeleteProject: func(id string, orgID string, requesterID uint) error { return nil },
 			}

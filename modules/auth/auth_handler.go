@@ -12,6 +12,9 @@ import (
 type SignupRequest struct {
 	Email    string `json:"email" binding:"required" example:"user@example.com"`
 	Password string `json:"password" binding:"required" example:"securepassword123"`
+	Name     string `json:"name" binding:"required" example:"John Doe"`
+	Phone    string `json:"phone" binding:"required" example:"+628123456789"`
+	Address  string `json:"address" example:"Jl. Sudirman No.123, Jakarta"`
 }
 
 // LoginRequest represents the request body for user login.
@@ -58,6 +61,9 @@ func (h *Handler) Signup(c *gin.Context) {
 	user, err := h.authService.Signup(SignupInput{
 		Email:    req.Email,
 		Password: req.Password,
+		Name:     req.Name,
+		Phone:    req.Phone,
+		Address:  req.Address,
 	})
 	if err != nil {
 		utils.SendError(c, http.StatusBadRequest, err.Error())

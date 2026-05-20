@@ -28,6 +28,9 @@ func NewAuthService(repo AuthRepository) AuthService {
 type SignupInput struct {
 	Email    string
 	Password string
+	Name     string
+	Phone    string
+	Address  string
 }
 
 type LoginInput struct {
@@ -46,6 +49,9 @@ func (s *authService) Signup(input SignupInput) (*User, error) {
 	user := User{
 		Email:    input.Email,
 		Password: string(hash),
+		Name:     input.Name,
+		Phone:    input.Phone,
+		Address:  input.Address,
 	}
 	if err := s.repo.CreateUser(&user); err != nil {
 		return nil, errors.New("email already registered")
