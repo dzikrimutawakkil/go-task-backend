@@ -160,21 +160,30 @@ func TestValidateJWT(t *testing.T) {
 		"sub": userID,
 		"exp": time.Now().Add(time.Hour).Unix(),
 	})
-	validTokenString, _ := validToken.SignedString(secretKey)
+	validTokenString, err := validToken.SignedString(secretKey)
+	if err != nil {
+		t.Fatalf("Failed to sign valid token: %v", err)
+	}
 
 	// Generate expired token
 	expiredToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub": userID,
 		"exp": time.Now().Add(-time.Hour).Unix(), // Already expired
 	})
-	expiredTokenString, _ := expiredToken.SignedString(secretKey)
+	expiredTokenString, err := expiredToken.SignedString(secretKey)
+	if err != nil {
+		t.Fatalf("Failed to sign expired token: %v", err)
+	}
 
 	// Generate token with different secret
 	wrongSecretToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub": userID,
 		"exp": time.Now().Add(time.Hour).Unix(),
 	})
-	wrongSecretTokenString, _ := wrongSecretToken.SignedString([]byte("wrong-secret"))
+	wrongSecretTokenString, err := wrongSecretToken.SignedString([]byte("wrong-secret"))
+	if err != nil {
+		t.Fatalf("Failed to sign wrong secret token: %v", err)
+	}
 
 	testCases := []struct {
 		name        string

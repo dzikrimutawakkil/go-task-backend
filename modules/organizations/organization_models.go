@@ -5,10 +5,17 @@ import (
 	"time"
 )
 
+// OrganizationType constants
+const (
+	OrgTypePersonal = "personal"
+	OrgTypeTeam     = "team"
+)
+
 type Organization struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
 	Name      string    `gorm:"unique" json:"name"`
 	OwnerID   uint      `json:"owner_id"`
+	OrgType   string    `gorm:"type:varchar(20);default:'personal'" json:"org_type"`
 	CreatedAt time.Time `json:"created_at"`
 }
 

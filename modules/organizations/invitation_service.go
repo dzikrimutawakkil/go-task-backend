@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	"gotask-backend/internal/interfaces"
 	"gotask-backend/models"
-	"gotask-backend/modules/auth"
 	"gotask-backend/utils"
 )
 
@@ -23,13 +23,13 @@ type InvitationService interface {
 type invitationService struct {
 	repo        InvitationRepository
 	orgRepo     OrganizationRepository
-	authService auth.AuthService
+	authService interfaces.AuthService
 }
 
 func NewInvitationService(
 	repo InvitationRepository,
 	orgRepo OrganizationRepository,
-	authS auth.AuthService,
+	authS interfaces.AuthService,
 ) InvitationService {
 	return &invitationService{
 		repo:        repo,
@@ -65,7 +65,7 @@ func (s *invitationService) CreateInvitation(orgID uint, email string, role mode
 	}
 
 	// Check if email already in org
-	user, err := s.authService.GetUserByEmail(email)
+	user, err := s.authService.GetMinimalUserByEmail(email)
 	if err != nil {
 		return nil, errors.New("user with this email does not exist")
 	}
@@ -145,7 +145,7 @@ func (s *invitationService) AcceptInvitation(token string) (*Organization, error
 	}
 
 	// Get the invited user (must be logged in to accept)
-	user, err := s.authService.GetUserByEmail(invitation.InvitedEmail)
+	user, err := s.authService.GetMinimalUserByEmail(invitation.InvitedEmail)
 	if err != nil {
 		return nil, errors.New("cannot identify accepting user")
 	}

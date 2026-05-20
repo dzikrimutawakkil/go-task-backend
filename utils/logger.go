@@ -66,7 +66,10 @@ func WithRequestID(ctx context.Context, requestID string) context.Context {
 // GetRequestID retrieves request_id from context.
 func GetRequestID(ctx context.Context) string {
 	if v := ctx.Value(requestIDKey); v != nil {
-		return v.(string)
+		// Perbaikan: Gunakan comma ok idiom untuk menghindari panic dan linter warning
+		if str, ok := v.(string); ok {
+			return str
+		}
 	}
 	return ""
 }
@@ -79,7 +82,10 @@ func WithUserID(ctx context.Context, userID uint) context.Context {
 // GetUserID retrieves user_id from context.
 func GetUserID(ctx context.Context) uint {
 	if v := ctx.Value(userIDKey); v != nil {
-		return v.(uint)
+		// Perbaikan: Gunakan comma ok idiom untuk menghindari panic dan linter warning
+		if id, ok := v.(uint); ok {
+			return id
+		}
 	}
 	return 0
 }
@@ -92,7 +98,10 @@ func WithOrgID(ctx context.Context, orgID string) context.Context {
 // GetOrgID retrieves org_id from context.
 func GetOrgID(ctx context.Context) string {
 	if v := ctx.Value(orgIDKey); v != nil {
-		return v.(string)
+		// Perbaikan: Gunakan comma ok idiom untuk menghindari panic dan linter warning
+		if str, ok := v.(string); ok {
+			return str
+		}
 	}
 	return ""
 }

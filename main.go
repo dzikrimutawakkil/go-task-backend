@@ -73,11 +73,11 @@ func main() {
 
 	// Dependency Injection for Auth
 	authRepo := auth.NewAuthRepository(config.DB)
-	authService := auth.NewAuthService(authRepo)
+	orgRepo := organizations.NewOrganizationRepository(config.DB)
+	authService := auth.NewAuthService(authRepo, orgRepo)
 	authHandler := auth.NewAuthHandler(authService)
 
 	// Dependency Injection for Organization
-	orgRepo := organizations.NewOrganizationRepository(config.DB)
 	invitationRepo := organizations.NewInvitationRepository(config.DB)
 	orgService := organizations.NewOrganizationService(orgRepo, authService)
 	invitationService := organizations.NewInvitationService(invitationRepo, orgRepo, authService)

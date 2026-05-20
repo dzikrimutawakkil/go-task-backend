@@ -3,7 +3,6 @@ package organizations
 import (
 	"errors"
 	"gotask-backend/models"
-	"gotask-backend/modules/auth"
 	"gotask-backend/utils"
 	"net/http"
 	"strconv"
@@ -58,7 +57,7 @@ func (h *Handler) CreateOrganization(c *gin.Context) {
 		return
 	}
 
-	user := c.MustGet("user").(auth.User)
+	user := c.MustGet("user").(models.MinimalUser)
 
 	org, err := h.service.CreateOrganization(req.Name, user.ID)
 	if err != nil {
@@ -104,7 +103,7 @@ func (h *Handler) InviteMember(c *gin.Context) {
 		return
 	}
 
-	user := c.MustGet("user").(auth.User)
+	user := c.MustGet("user").(models.MinimalUser)
 
 	err = h.service.InviteMember(orgID, req.Email, user.ID)
 	if err != nil {
@@ -184,7 +183,7 @@ func (h *Handler) RemoveMember(c *gin.Context) {
 	}
 	targetUserID := uint(targetUserID64)
 
-	requester := c.MustGet("user").(auth.User)
+	requester := c.MustGet("user").(models.MinimalUser)
 
 	err = h.service.RemoveMember(orgID, targetUserID, requester.ID)
 	if err != nil {
@@ -252,7 +251,7 @@ func (h *Handler) UpdateMemberRole(c *gin.Context) {
 		return
 	}
 
-	requester := c.MustGet("user").(auth.User)
+	requester := c.MustGet("user").(models.MinimalUser)
 
 	err = h.service.UpdateMemberRole(orgID, targetUserID, newRole, requester.ID)
 	if err != nil {

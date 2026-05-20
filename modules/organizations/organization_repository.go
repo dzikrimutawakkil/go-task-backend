@@ -10,6 +10,7 @@ import (
 type OrganizationRepository interface {
 	Create(org *Organization) error
 	FindByID(id uint) (*Organization, error)
+	FindPersonalOrgByOwnerID(ownerID uint) (*Organization, error)
 	AddMember(orgID uint, userID uint, role models.Role) error
 	IsMember(userID uint, orgID uint) (bool, error)
 	FindMemberIDs(orgID uint) ([]uint, error)
@@ -35,6 +36,15 @@ func (r *organizationRepository) FindByID(id uint) (*Organization, error) {
 	var org Organization
 	err := r.db.First(&org, id).Error
 	return &org, err
+}
+
+func (r *organizationRepository) FindPersonalOrgByOwnerID(ownerID uint) (*Organization, error) {
+	var org Organization
+	err := r.db.Where("owner_id = ? AND org_type = ?", ownerID, OrgTypePersonal).First(&org).Error
+	if err != nil {
+		return nil, err
+	}
+	return &org, nil
 }
 
 // AddMember adds a user to the organization with a given role.

@@ -2,25 +2,25 @@ package organizations
 
 import (
 	"errors"
+	"gotask-backend/internal/interfaces"
 	"gotask-backend/models"
-	"gotask-backend/modules/auth"
 )
 
 type OrganizationService interface {
 	CreateOrganization(name string, ownerID uint) (*Organization, error)
 	CheckAccess(userID uint, orgID uint) (bool, error)
 	InviteMember(orgID uint, email string, requesterID uint) error
-	GetMembers(orgID uint) ([]auth.User, error)
+	GetMembers(orgID uint) ([]interfaces.MinimalUser, error)
 	RemoveMember(orgID uint, targetUserID uint, requesterID uint) error
 	UpdateMemberRole(orgID uint, targetUserID uint, newRole models.Role, requesterID uint) error
 }
 
 type organizationService struct {
 	repo        OrganizationRepository
-	authService auth.AuthService
+	authService interfaces.AuthService
 }
 
-func NewOrganizationService(repo OrganizationRepository, authS auth.AuthService) OrganizationService {
+func NewOrganizationService(repo OrganizationRepository, authS interfaces.AuthService) OrganizationService {
 	return &organizationService{
 		repo:        repo,
 		authService: authS,
@@ -61,7 +61,7 @@ func (s *organizationService) InviteMember(orgID uint, email string, requesterID
 		return errors.New("insufficient permission to invite members")
 	}
 
-	user, err := s.authService.GetUserByEmail(email)
+	user, err := s.authService.GetMinimalUserByEmail(email)
 	if err != nil {
 		return errors.New("user with this email not found")
 	}
@@ -77,17 +77,17 @@ func (s *organizationService) InviteMember(orgID uint, email string, requesterID
 	return s.repo.AddMember(orgID, user.ID, models.RoleMember)
 }
 
-func (s *organizationService) GetMembers(orgID uint) ([]auth.User, error) {
+func (s *organizationService) GetMembers(orgID uint) ([]interfaces.MinimalUser, error) {
 	memberIDs, err := s.repo.FindMemberIDs(orgID)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(memberIDs) == 0 {
-		return []auth.User{}, nil
+		return []interfaces.MinimalUser{}, nil
 	}
 
-	return s.authService.GetUsersByIDs(memberIDs)
+	return s.authService.GetMinimalUsersByIDs(memberIDs)
 }
 
 // RemoveMember removes a member from the organization.
