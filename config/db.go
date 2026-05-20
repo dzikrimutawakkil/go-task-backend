@@ -81,15 +81,19 @@ func runMigrations() {
 	if err != nil {
 		log.Fatalf("Failed to open migrations source directory: %v", err)
 	}
-	defer fSource.Close()
 
 	m, err := migrate.NewWithSourceInstance("file", fSource, migrationURL)
 	if err != nil {
 		log.Fatalf("Failed to create migration instance: %v", err)
 	}
 	defer func() {
-		if _, err := m.Close(); err != nil {
-			log.Printf("Warning: failed to close migrate instance: %v", err)
+		// Perbaikan: m.Close() mengembalikan dua error (source error, database error)
+		sourceErr, dbErr := m.Close()
+		if sourceErr != nil {
+			log.Printf("Warning: failed to close migration source: %v", sourceErr)
+		}
+		if dbErr != nil {
+			log.Printf("Warning: failed to close migration database: %v", dbErr)
 		}
 	}()
 

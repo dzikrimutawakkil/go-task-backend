@@ -58,6 +58,7 @@ func TestHashPassword(t *testing.T) {
 
 func TestVerifyPassword(t *testing.T) {
 	password := "testpassword123"
+	// Abaikan error saat setup test
 	hash, _ := bcrypt.GenerateFromPassword([]byte(password), 10)
 
 	testCases := []struct {
@@ -100,8 +101,10 @@ func TestVerifyPassword(t *testing.T) {
 }
 
 func TestGenerateJWT(t *testing.T) {
-	os.Setenv("SECRET_KEY", "test-secret-key-for-jwt-validation")
-	defer os.Unsetenv("SECRET_KEY")
+	_ = os.Setenv("SECRET_KEY", "test-secret-key-for-jwt-validation")
+	defer func() {
+		_ = os.Unsetenv("SECRET_KEY")
+	}()
 
 	userID := uint(1)
 	expiryDuration := time.Hour * 24 * 30 // 30 days
@@ -134,8 +137,10 @@ func TestGenerateJWT(t *testing.T) {
 }
 
 func TestValidateJWT(t *testing.T) {
-	os.Setenv("SECRET_KEY", "test-secret-key-for-jwt-validation")
-	defer os.Unsetenv("SECRET_KEY")
+	_ = os.Setenv("SECRET_KEY", "test-secret-key-for-jwt-validation")
+	defer func() {
+		_ = os.Unsetenv("SECRET_KEY")
+	}()
 
 	secretKey := []byte(os.Getenv("SECRET_KEY"))
 	userID := uint(42)
