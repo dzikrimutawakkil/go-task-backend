@@ -1,9 +1,9 @@
-version: '3.8'
-
 services:
   # Service 1: Your Go Application
   app:
-    build: .             # Build using the Dockerfile in the current directory
+    build:
+      context: .
+      target: production  # Use production stage (not development)
     ports:
       - "8080:8080"      # Map host port 8080 to container port 8080
     restart: always
@@ -15,7 +15,8 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_NAME=${DB_NAME}
       - DB_PORT=${DB_PORT}
-      - SECRET_KEY=${SECRET_KEY}    
+      - SECRET_KEY=${SECRET_KEY}
+      - MIGRATIONS_PATH=/app/migrations    
 
   # Service 2: The Database
   db:

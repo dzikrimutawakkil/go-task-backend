@@ -46,11 +46,11 @@ RUN chown -R appuser:appuser /app
 # Copy binary from builder stage
 COPY --from=builder /build/gotask-backend .
 
+# Copy migrations folder for database migrations
+COPY --from=builder /build/migrations ./migrations
+
 # Copy .env.example as template (actual .env should be mounted via docker-compose or secrets)
 COPY --from=builder /build/.env.example .
-
-# Switch to non-root user
-USER appuser
 
 # Expose the port
 EXPOSE 8080
@@ -59,19 +59,26 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
-# Run as non-root user
+# Run configuration
 ENV GIN_MODE=release
 ENV PORT=8080
+ENV MIGRATIONS_PATH=/app/migrations
 
+# Use exec form to run as PID 1 (needed for proper signal handling)
 ENTRYPOINT ["./gotask-backend"]
-CMD ["--env", "production"]
 
 # ============================================
 # Stage 3: Development (optional)
 # ============================================
-FROM builder AS development
+FROM golang:1.24-alpine AS development
 
 WORKDIR /app
+
+# Install git for go install and air for hot reload
+RUN apk add --no-cache git ca-certificates
+
+# Install air (live reload tool)
+RUN go install github.com/air-verse/air@latest
 
 # Copy source code for hot reload (use with volume mounts)
 COPY . .
