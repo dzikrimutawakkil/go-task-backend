@@ -26,6 +26,7 @@ type CreateTaskRequest struct {
 // @Description Request body for updating a task
 type UpdateTaskRequest struct {
 	Title           *string    `json:"title" example:"Updated task title"`
+	Description     *string    `json:"description" example:"Updated task description"`
 	StatusID        *uint      `json:"status_id" example:"2"`
 	PriorityID      *uint      `json:"priority_id" example:"2"`
 	AssigneeIDs     []uint     `json:"assignee_ids"`

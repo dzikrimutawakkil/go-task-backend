@@ -9,7 +9,9 @@ import (
 
 type ProjectService interface {
 	GetProjects(orgID string) ([]Project, error)
+	GetProject(id string) (*Project, error)
 	CreateProject(input CreateProjectInput, userID uint) (*Project, error)
+	UpdateProject(id string, input UpdateProjectInput) (*Project, error)
 	DeleteProject(id string, orgID string, requesterID uint) error
 }
 
@@ -23,15 +25,63 @@ func NewProjectService(repo ProjectRepository, taskService tasks.TaskService, or
 	return &projectService{repo, taskService, orgRepo}
 }
 
-// Input DTO
+// Input DTOs
 type CreateProjectInput struct {
 	Name           string
 	Description    string
 	OrganizationID uint
 }
 
+type UpdateProjectInput struct {
+	Name        *string
+	Description *string
+	Status      *string
+	Priority    *string
+	Budget      *float64
+	Deadline    *string
+	Progress    *int
+}
+
 func (s *projectService) GetProjects(orgID string) ([]Project, error) {
 	return s.repo.FindAllByOrg(orgID)
+}
+
+func (s *projectService) GetProject(id string) (*Project, error) {
+	return s.repo.FindByID(id)
+}
+
+func (s *projectService) UpdateProject(id string, input UpdateProjectInput) (*Project, error) {
+	project, err := s.repo.FindByID(id)
+	if err != nil {
+		return nil, errors.New("project not found")
+	}
+
+	if input.Name != nil {
+		project.Name = *input.Name
+	}
+	if input.Description != nil {
+		project.Description = *input.Description
+	}
+	if input.Status != nil {
+		project.Status = *input.Status
+	}
+	if input.Priority != nil {
+		project.Priority = *input.Priority
+	}
+	if input.Budget != nil {
+		project.Budget = input.Budget
+	}
+	if input.Deadline != nil {
+		project.Deadline = input.Deadline
+	}
+	if input.Progress != nil {
+		project.Progress = int64(*input.Progress)
+	}
+
+	if err := s.repo.Update(project); err != nil {
+		return nil, err
+	}
+	return project, nil
 }
 
 func (s *projectService) CreateProject(input CreateProjectInput, userID uint) (*Project, error) {

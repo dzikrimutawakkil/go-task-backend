@@ -34,13 +34,15 @@ GoTask is a SaaS-ready task management backend API designed to support multi-ten
 ## ✨ Features
 
 ### Core Features
-- [x] **Authentication**: Signup, Login, JWT tokens
-- [x] **Organizations**: Create, invite members, role management
-- [x] **Projects**: CRUD within organizations
-- [x] **Tasks**: Full CRUD with filtering, search, pagination
-- [x] **Statuses**: Auto-created with projects, reorderable
+- [x] **Authentication**: Signup, Login, JWT tokens, Forgot Password, Get Current User
+- [x] **Personal Workspace**: Auto-creates personal org on registration (zero-friction onboarding)
+- [x] **Organizations**: Create, invite members, role management (Owner/Admin/Member)
+- [x] **Projects**: Full CRUD with status, priority, progress, budget, deadline
+- [x] **Tasks**: Full CRUD with labels, statuses, priorities, assignees, search & filters
+- [x] **Statuses**: Auto-created with projects, reorderable via index
 - [x] **Labels**: Custom labels per project
-- [x] **Assignees**: Multiple users per task
+- [x] **Clients**: Contact management with revenue tracking
+- [x] **Invoices**: Invoice generation with auto-numbering (INV-YYYY-XXX) and revenue sync
 
 ### Security Features
 - [x] **RBAC**: Role-based access control (Admin, Manager, Member)
@@ -162,25 +164,29 @@ http://localhost:8080
 
 ### Authentication Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/signup` | Register new user |
-| POST | `/login` | Authenticate & get JWT |
+| Method | Endpoint | Description | Auth? |
+|--------|----------|-------------|-------|
+| POST | `/signup` | Register new user (returns `user` + `token`) | No |
+| POST | `/login` | Authenticate (returns `user` + `token`) | No |
+| POST | `/forgot-password` | Request password reset | No |
+| GET | `/api/auth/me` | Get current authenticated user | Yes |
 
 ### Project Endpoints (Protected)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/projects` | List all projects |
+| GET | `/projects` | List all projects in org |
+| GET | `/projects/:id` | Get single project |
 | POST | `/projects` | Create new project |
+| PATCH | `/projects/:id` | Update project |
 | DELETE | `/projects/:id` | Delete project |
 
 ### Task Endpoints (Protected)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/projects/:id/tasks` | List tasks by project |
-| GET | `/tasks/search` | Search tasks |
+| GET | `/projects/:id/tasks` | List tasks by project (paginated) |
+| GET | `/tasks/search` | Full-text search + filters |
 | POST | `/tasks` | Create new task |
 | PATCH | `/tasks/:id` | Update task |
 | DELETE | `/tasks/:id` | Delete task |
@@ -191,7 +197,7 @@ http://localhost:8080
 |--------|----------|-------------|
 | GET | `/projects/:id/status` | List project statuses |
 | POST | `/projects/:id/status` | Create status |
-| PATCH | `/status/:id` | Update status |
+| PATCH | `/status/:id` | Update status (reorderable) |
 | DELETE | `/status/:id` | Delete status |
 
 ### Label Endpoints (Protected)
@@ -203,6 +209,27 @@ http://localhost:8080
 | PATCH | `/labels/:id` | Update label |
 | DELETE | `/labels/:id` | Delete label |
 
+### Client Endpoints (Protected)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/clients` | List all clients |
+| POST | `/clients` | Create client |
+| GET | `/clients/:id` | Get single client |
+| PATCH | `/clients/:id` | Update client |
+| DELETE | `/clients/:id` | Delete client |
+| GET | `/clients/stats` | Get stats (`total`, `totalRevenue`, `avgRevenue`) |
+
+### Invoice Endpoints (Protected)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/invoices` | List all invoices |
+| POST | `/invoices` | Create invoice (auto-generates INV-YYYY-XXX) |
+| GET | `/invoices/:id` | Get single invoice |
+| PATCH | `/invoices/:id` | Update invoice (set status=`paid` → revenue sync) |
+| DELETE | `/invoices/:id` | Delete invoice |
+
 ### Organization Endpoints (Protected)
 
 | Method | Endpoint | Description |
@@ -210,7 +237,24 @@ http://localhost:8080
 | POST | `/organizations` | Create organization |
 | POST | `/organizations/invite` | Invite member |
 | GET | `/organizations/members` | List members |
+| PATCH | `/organizations/members/:user_id` | Update member role |
 | DELETE | `/organizations/members/:user_id` | Remove member |
+| GET | `/organizations/invitations` | List pending invitations |
+
+### Invitation Endpoints
+
+| Method | Endpoint | Description | Auth? |
+|--------|----------|-------------|-------|
+| POST | `/invite/accept` | Accept invitation | Yes |
+| POST | `/invite/resend` | Resend invitation | Yes |
+| DELETE | `/invite/:token` | Revoke invitation | Yes |
+
+### Health Endpoints
+
+| Method | Endpoint | Description | Auth? |
+|--------|----------|-------------|-------|
+| GET | `/health` | Liveness check | No |
+| GET | `/ready` | Readiness check | No |
 
 ### Request Headers
 
@@ -246,20 +290,19 @@ Authorization: Bearer <jwt_token>
 gotask-backend/
 ├── config/              # Database connection & configuration
 ├── docs/                # Swagger generated documentation
+│   └── specs/done/      # Archived specs
 ├── handlers/             # HTTP handlers (health, etc.)
 ├── middlewares/          # Gin middlewares (auth, logging, CORS, rate limit)
 ├── migrations/           # Database migration files
 ├── models/              # Database models
 ├── modules/             # Feature modules (Clean Architecture)
-│   ├── auth/            # Authentication module
-│   ├── organizations/    # Organization module
+│   ├── auth/            # Authentication module (Signup, Login, Me, ForgotPassword)
+│   ├── clients/         # Client management module (CRUD + stats)
+│   ├── invoices/        # Invoice management module (CRUD + auto-numbering + revenue sync)
+│   ├── organizations/  # Organization module
 │   ├── projects/        # Project module
 │   └── tasks/           # Task, Status, Label module
-├── routes/              # Route definitions
 ├── utils/               # Utility functions (logger, response helpers)
-├── docs/
-│   ├── DEPLOYMENT.md     # Deployment guide
-│   └── SPEC.md          # Technical specification
 ├── main.go              # Application entry point
 ├── Dockerfile           # Multi-stage production Dockerfile
 ├── docker-compose.yml  # Development environment

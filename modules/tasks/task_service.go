@@ -62,6 +62,7 @@ type CreateTaskInput struct {
 
 type UpdateTaskInput struct {
 	Title           *string
+	Description     *string
 	StatusID        *uint
 	PriorityID      *uint
 	AssigneeIDs     []uint
@@ -125,6 +126,9 @@ func (s *taskService) UpdateTask(id string, input UpdateTaskInput) (*Task, error
 	updates := make(map[string]interface{})
 	if input.Title != nil {
 		updates["title"] = *input.Title
+	}
+	if input.Description != nil {
+		updates["description"] = *input.Description
 	}
 	if input.StatusID != nil {
 		updates["status_id"] = *input.StatusID

@@ -10,7 +10,9 @@ import (
 type ProjectRepository interface {
 	FindAllByOrg(orgID string) ([]Project, error)
 	FindByIDAndOrg(id string, orgID string) (*Project, error)
+	FindByID(id string) (*Project, error)
 	Create(project *Project) error
+	Update(project *Project) error
 	Delete(project *Project) error
 
 	// Task cleanup helpers
@@ -50,6 +52,18 @@ func (r *projectRepository) FindByIDAndOrg(id string, orgID string) (*Project, e
 
 func (r *projectRepository) Create(project *Project) error {
 	return r.db.Create(project).Error
+}
+
+func (r *projectRepository) FindByID(id string) (*Project, error) {
+	var project Project
+	if err := r.db.First(&project, id).Error; err != nil {
+		return nil, err
+	}
+	return &project, nil
+}
+
+func (r *projectRepository) Update(project *Project) error {
+	return r.db.Save(project).Error
 }
 
 func (r *projectRepository) Delete(project *Project) error {

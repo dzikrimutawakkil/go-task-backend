@@ -7,6 +7,8 @@ import (
 	"gotask-backend/handlers"
 	"gotask-backend/middlewares"
 	"gotask-backend/modules/auth"
+	"gotask-backend/modules/clients"
+	"gotask-backend/modules/invoices"
 	"gotask-backend/modules/organizations"
 	"gotask-backend/modules/projects"
 	"gotask-backend/modules/tasks"
@@ -96,9 +98,20 @@ func main() {
 	projectService := projects.NewProjectService(projectRepo, taskService, orgRepo)
 	projectHandler := projects.NewProjectHandler(projectService)
 
+	// Dependency Injection for Clients
+	clientRepo := clients.NewClientRepository(config.DB)
+	clientService := clients.NewClientService(clientRepo)
+	clientHandler := clients.NewClientHandler(clientService)
+
+	// Dependency Injection for Invoices
+	invoiceRepo := invoices.NewInvoiceRepository(config.DB)
+	invoiceService := invoices.NewInvoiceService(invoiceRepo, clientRepo)
+	invoiceHandler := invoices.NewInvoiceHandler(invoiceService)
+
 	// PUBLIC ROUTES
 	r.POST("/signup", authHandler.Signup)
 	r.POST("/login", authHandler.Login)
+	r.POST("/forgot-password", authHandler.ForgotPassword)
 
 	// PROTECTED ROUTES
 	// Q12: Rate limiting — per IP for unauthenticated, per user for authenticated
@@ -116,8 +129,11 @@ func main() {
 		KeyFunc:           middlewares.UserKeyFunc,
 	}))
 	{
+		protected.GET("/auth/me", authHandler.Me)
 		protected.GET("/projects", projectHandler.FindProjects)
+		protected.GET("/projects/:id", projectHandler.GetProject)
 		protected.POST("/projects", projectHandler.CreateProject)
+		protected.PATCH("/projects/:id", projectHandler.UpdateProject)
 		protected.DELETE("/projects/:id", projectHandler.DeleteProject)
 
 		protected.GET("/projects/:id/tasks", taskHandler.FindTasksByProject)
@@ -142,6 +158,19 @@ func main() {
 		protected.DELETE("/organizations/members/:user_id", orgHandler.RemoveMember)
 		protected.PATCH("/organizations/members/:user_id", orgHandler.UpdateMemberRole)
 		protected.GET("/organizations/invitations", invitationHandler.GetInvitations)
+
+		protected.GET("/clients", clientHandler.ListClients)
+		protected.GET("/clients/stats", clientHandler.GetClientStats)
+		protected.POST("/clients", clientHandler.CreateClient)
+		protected.GET("/clients/:id", clientHandler.GetClient)
+		protected.PATCH("/clients/:id", clientHandler.UpdateClient)
+		protected.DELETE("/clients/:id", clientHandler.DeleteClient)
+
+		protected.GET("/invoices", invoiceHandler.ListInvoices)
+		protected.POST("/invoices", invoiceHandler.CreateInvoice)
+		protected.GET("/invoices/:id", invoiceHandler.GetInvoice)
+		protected.PATCH("/invoices/:id", invoiceHandler.UpdateInvoice)
+		protected.DELETE("/invoices/:id", invoiceHandler.DeleteInvoice)
 	}
 
 	// Public invitation endpoints (accept doesn't require org context)

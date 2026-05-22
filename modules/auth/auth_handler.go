@@ -24,6 +24,12 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required" example:"securepassword123"`
 }
 
+// ForgotPasswordRequest represents the request body for password reset.
+// @Description Request body for password reset
+type ForgotPasswordRequest struct {
+	Email string `json:"email" binding:"required" example:"user@example.com"`
+}
+
 // AuthResponse represents the data payload for auth endpoints.
 // @Description Auth data payload containing user info or token
 type AuthResponse struct {
@@ -41,12 +47,12 @@ func NewAuthHandler(authS AuthService) *Handler {
 
 // Signup godoc
 // @Summary     User registration
-// @Description Register a new user with email and password. Returns the created user object.
+// @Description Register a new user with email and password. Returns the created user object and JWT token.
 // @Tags        Auth
 // @Accept      json
 // @Produce     json
 // @Param       body body SignupRequest true "Signup payload"
-// @Success     200 {object} utils.APIResponse{data=User} "Signup successful"
+// @Success     200 {object} utils.APIResponse{data=map[string]interface{}} "Signup successful"
 // @Failure     400 {object} utils.APIResponse "Validation error or email already exists"
 // @Router      /signup [post]
 func (h *Handler) Signup(c *gin.Context) {
@@ -70,8 +76,19 @@ func (h *Handler) Signup(c *gin.Context) {
 		return
 	}
 
+	// Generate JWT token for immediate login after registration
+	token, err := h.authService.Login(LoginInput{
+		Email:    req.Email,
+		Password: req.Password,
+	})
+	if err != nil {
+		utils.SendError(c, http.StatusInternalServerError, "Signup succeeded but token generation failed")
+		return
+	}
+
 	utils.SendSuccess(c, "Signup successful", gin.H{
-		"user": user,
+		"user":  user,
+		"token": token,
 	})
 }
 
@@ -100,5 +117,59 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
-	utils.SendSuccess(c, "Login successful", gin.H{"token": token})
+	// Fetch user to return alongside token (frontend expects { user, token })
+	user, err := h.authService.GetUserByEmail(req.Email)
+	if err != nil {
+		utils.SendError(c, http.StatusInternalServerError, "Login succeeded but user fetch failed")
+		return
+	}
+
+	utils.SendSuccess(c, "Login successful", gin.H{
+		"user":  user,
+		"token": token,
+	})
+}
+
+// Me godoc
+// @Summary     Get current user
+// @Description Returns the authenticated user's profile based on JWT token.
+// @Tags        Auth
+// @Accept      json
+// @Produce     json
+// @Security    BearerAuth
+// @Success     200 {object} utils.APIResponse "success"
+// @Failure     401 {object} utils.APIResponse "Unauthorized"
+// @Router      /api/auth/me [get]
+func (h *Handler) Me(c *gin.Context) {
+	user := c.MustGet("user").(User)
+	utils.SendSuccess(c, "success", gin.H{
+		"user": user,
+	})
+}
+
+// ForgotPassword godoc
+// @Summary     Request password reset
+// @Description Sends a password reset email to the user if the email exists.
+// @Tags        Auth
+// @Accept      json
+// @Produce     json
+// @Param       body body ForgotPasswordRequest true "Email payload"
+// @Success     200 {object} utils.APIResponse "If the email exists, a reset link has been sent"
+// @Failure     400 {object} utils.APIResponse "Validation error"
+// @Router      /forgot-password [post]
+func (h *Handler) ForgotPassword(c *gin.Context) {
+	var req ForgotPasswordRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.SendError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// Always return 200 to prevent email enumeration attacks
+	if err := h.authService.ForgotPassword(req.Email); err != nil {
+		utils.SendSuccess(c, "If the email exists, a reset link has been sent")
+		return
+	}
+
+	utils.SendSuccess(c, "If the email exists, a reset link has been sent")
 }

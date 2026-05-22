@@ -1,5 +1,14 @@
 basePath: /
 definitions:
+  auth.ForgotPasswordRequest:
+    description: Request body for password reset
+    properties:
+      email:
+        example: user@example.com
+        type: string
+    required:
+    - email
+    type: object
   auth.LoginRequest:
     description: Request body for user login
     properties:
@@ -37,19 +46,140 @@ definitions:
     - password
     - phone
     type: object
-  auth.User:
+  clients.CreateClientRequest:
     properties:
       address:
+        example: Jakarta, Indonesia
         type: string
-      created_at:
+      company:
+        example: Acme Corp
         type: string
       email:
+        example: john@example.com
         type: string
-      id:
-        type: integer
       name:
+        example: John Doe
+        type: string
+      notes:
+        example: Referral from friend
         type: string
       phone:
+        example: "+6281234567890"
+        type: string
+      website:
+        example: https://acme.com
+        type: string
+      whatsapp:
+        example: "+6281234567890"
+        type: string
+    required:
+    - name
+    type: object
+  clients.UpdateClientRequest:
+    properties:
+      address:
+        example: Jakarta, Indonesia
+        type: string
+      company:
+        example: Acme Corp
+        type: string
+      email:
+        example: john@example.com
+        type: string
+      name:
+        example: John Doe
+        type: string
+      notes:
+        example: Updated notes
+        type: string
+      phone:
+        example: "+6281234567890"
+        type: string
+      website:
+        example: https://acme.com
+        type: string
+      whatsapp:
+        example: "+6281234567890"
+        type: string
+    type: object
+  invoices.CreateInvoiceRequest:
+    properties:
+      amount:
+        example: 500000
+        type: number
+      client_id:
+        type: integer
+      discount:
+        example: 0
+        type: number
+      due_date:
+        example: "2026-06-30T00:00:00Z"
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/invoices.InvoiceItemRequest'
+        type: array
+      notes:
+        example: Payment due within 30 days
+        type: string
+      project_id:
+        type: integer
+      tax:
+        example: 50000
+        type: number
+      title:
+        type: string
+    required:
+    - amount
+    type: object
+  invoices.InvoiceItemRequest:
+    properties:
+      description:
+        example: Web Development
+        type: string
+      quantity:
+        example: 1
+        type: number
+      total:
+        example: 500000
+        type: number
+      unit_price:
+        example: 500000
+        type: number
+    required:
+    - description
+    - quantity
+    - total
+    - unit_price
+    type: object
+  invoices.UpdateInvoiceRequest:
+    properties:
+      amount:
+        example: 500000
+        type: number
+      client_id:
+        type: integer
+      discount:
+        example: 0
+        type: number
+      due_date:
+        example: "2026-06-30T00:00:00Z"
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/invoices.InvoiceItemRequest'
+        type: array
+      notes:
+        type: string
+      project_id:
+        type: integer
+      status:
+        example: paid
+        type: string
+      tax:
+        example: 50000
+        type: number
+      title:
         type: string
     type: object
   organizations.AcceptInvitationRequest:
@@ -86,6 +216,8 @@ definitions:
       id:
         type: integer
       name:
+        type: string
+      org_type:
         type: string
       owner_id:
         type: integer
@@ -146,7 +278,11 @@ definitions:
     type: object
   projects.Project:
     properties:
+      budget:
+        type: number
       created_at:
+        type: string
+      deadline:
         type: string
       description:
         type: string
@@ -156,8 +292,39 @@ definitions:
         type: string
       organization_id:
         type: integer
+      priority:
+        type: string
+      progress:
+        type: integer
+      status:
+        type: string
       version:
         type: integer
+    type: object
+  projects.UpdateProjectRequest:
+    description: Request body for project update (all fields optional)
+    properties:
+      budget:
+        example: 5000000
+        type: number
+      deadline:
+        example: "2026-06-30"
+        type: string
+      description:
+        example: Updated description
+        type: string
+      name:
+        example: Updated Project Name
+        type: string
+      priority:
+        example: high
+        type: string
+      progress:
+        example: 50
+        type: integer
+      status:
+        example: in_progress
+        type: string
     type: object
   tasks.CreateLabelRequest:
     description: Request body for creating a label
@@ -305,6 +472,9 @@ definitions:
         items:
           type: integer
         type: array
+      description:
+        example: Updated task description
+        type: string
       end_date:
         example: "2026-05-30T00:00:00Z"
         type: string
@@ -347,6 +517,207 @@ info:
   title: GoTask API
   version: 1.0.0
 paths:
+  /api/auth/me:
+    get:
+      consumes:
+      - application/json
+      description: Returns the authenticated user's profile based on JWT token.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: success
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current user
+      tags:
+      - Auth
+  /clients:
+    get:
+      description: Get all clients for the current organization.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: success
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to fetch clients
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: List clients
+      tags:
+      - Clients
+    post:
+      consumes:
+      - application/json
+      description: Create a new client for the current organization.
+      parameters:
+      - description: Client payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/clients.CreateClientRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Client created successfully
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to create client
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a client
+      tags:
+      - Clients
+  /clients/{id}:
+    delete:
+      description: Permanently delete a client.
+      parameters:
+      - description: Client ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Client deleted successfully
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "404":
+          description: Client not found
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a client
+      tags:
+      - Clients
+    get:
+      description: Get a single client by ID.
+      parameters:
+      - description: Client ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: success
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "404":
+          description: Client not found
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a client
+      tags:
+      - Clients
+    patch:
+      consumes:
+      - application/json
+      description: Update a client's fields.
+      parameters:
+      - description: Client ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Client update payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/clients.UpdateClientRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Client updated successfully
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "404":
+          description: Client not found
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a client
+      tags:
+      - Clients
+  /clients/stats:
+    get:
+      description: Get total count, total revenue, and average revenue for clients.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: success
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to fetch stats
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get client statistics
+      tags:
+      - Clients
+  /forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Sends a password reset email to the user if the email exists.
+      parameters:
+      - description: Email payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: If the email exists, a reset link has been sent
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      summary: Request password reset
+      tags:
+      - Auth
   /health:
     get:
       description: Returns 200 OK when the server process is alive. Used for basic
@@ -469,6 +840,142 @@ paths:
       summary: Resend an invitation
       tags:
       - Invitations
+  /invoices:
+    get:
+      description: Get all invoices for the current organization.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: success
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to fetch invoices
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: List invoices
+      tags:
+      - Invoices
+    post:
+      consumes:
+      - application/json
+      description: Create a new invoice with auto-generated invoice number (INV-YYYY-XXX).
+      parameters:
+      - description: Invoice payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/invoices.CreateInvoiceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Invoice created successfully
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to create invoice
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Create an invoice
+      tags:
+      - Invoices
+  /invoices/{id}:
+    delete:
+      description: Permanently delete an invoice.
+      parameters:
+      - description: Invoice ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Invoice deleted successfully
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "404":
+          description: Invoice not found
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete an invoice
+      tags:
+      - Invoices
+    get:
+      description: Get a single invoice by ID.
+      parameters:
+      - description: Invoice ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: success
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "404":
+          description: Invoice not found
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get an invoice
+      tags:
+      - Invoices
+    patch:
+      consumes:
+      - application/json
+      description: Update an invoice. Setting status to "paid" triggers revenue sync
+        to client.
+      parameters:
+      - description: Invoice ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Invoice update payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/invoices.UpdateInvoiceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Invoice updated successfully
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "404":
+          description: Invoice not found
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Update an invoice
+      tags:
+      - Invoices
   /labels/{id}:
     delete:
       description: Delete a label. The label will be removed from all associated tasks.
@@ -922,6 +1429,85 @@ paths:
       summary: Delete a project
       tags:
       - Projects
+    get:
+      description: Retrieve a single project by ID.
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Organization ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/projects.Project'
+              type: object
+        "404":
+          description: Project not found
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a project
+      tags:
+      - Projects
+    patch:
+      description: Update a project's fields (name, description, status, priority,
+        budget, deadline, progress).
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Project update payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/projects.UpdateProjectRequest'
+      - description: Organization ID
+        in: header
+        name: X-Organization-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Project updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/projects.Project'
+              type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "404":
+          description: Project not found
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a project
+      tags:
+      - Projects
   /projects/{id}/labels:
     get:
       description: Retrieve all labels belonging to a specific project.
@@ -1150,7 +1736,7 @@ paths:
       consumes:
       - application/json
       description: Register a new user with email and password. Returns the created
-        user object.
+        user object and JWT token.
       parameters:
       - description: Signup payload
         in: body
@@ -1168,7 +1754,8 @@ paths:
             - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/auth.User'
+                  additionalProperties: true
+                  type: object
               type: object
         "400":
           description: Validation error or email already exists

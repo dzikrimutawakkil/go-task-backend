@@ -16,6 +16,18 @@ type CreateProjectRequest struct {
 	Description string `json:"description" example:"Complete redesign of company website"`
 }
 
+// UpdateProjectRequest represents the request body for updating a project.
+// @Description Request body for project update (all fields optional)
+type UpdateProjectRequest struct {
+	Name        *string  `json:"name" example:"Updated Project Name"`
+	Description *string  `json:"description" example:"Updated description"`
+	Status      *string  `json:"status" example:"in_progress"`
+	Priority    *string  `json:"priority" example:"high"`
+	Budget      *float64 `json:"budget" example:"5000000"`
+	Deadline    *string  `json:"deadline" example:"2026-06-30"`
+	Progress    *int     `json:"progress" example:"50"`
+}
+
 type ProjectHandler struct {
 	service ProjectService
 }
@@ -116,4 +128,85 @@ func (h *ProjectHandler) DeleteProject(c *gin.Context) {
 	}
 
 	utils.SendSuccess(c, "Project deleted successfully")
+}
+
+// GetProject godoc
+// @Summary     Get a project
+// @Description Retrieve a single project by ID.
+// @Tags        Projects
+// @Produce     json
+// @Param       id path int true "Project ID"
+// @Param       X-Organization-ID header string true "Organization ID"
+// @Security    BearerAuth
+// @Success     200 {object} utils.APIResponse{data=Project} "Success"
+// @Failure     404 {object} utils.APIResponse "Project not found"
+// @Router      /projects/{id} [get]
+func (h *ProjectHandler) GetProject(c *gin.Context) {
+	id := c.Param("id")
+
+	project, err := h.service.GetProject(id)
+	if err != nil {
+		utils.SendError(c, http.StatusNotFound, "Project not found")
+		return
+	}
+
+	utils.SendSuccess(c, "Success", project)
+}
+
+// UpdateProject godoc
+// @Summary     Update a project
+// @Description Update a project's fields (name, description, status, priority, budget, deadline, progress).
+// @Tags        Projects
+// @Produce     json
+// @Param       id path int true "Project ID"
+// @Param       body body UpdateProjectRequest true "Project update payload"
+// @Param       X-Organization-ID header string true "Organization ID"
+// @Security    BearerAuth
+// @Success     200 {object} utils.APIResponse{data=Project} "Project updated successfully"
+// @Failure     400 {object} utils.APIResponse "Validation error"
+// @Failure     404 {object} utils.APIResponse "Project not found"
+// @Router      /projects/{id} [patch]
+func (h *ProjectHandler) UpdateProject(c *gin.Context) {
+	id := c.Param("id")
+
+	var req UpdateProjectRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.SendError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	input := UpdateProjectInput{}
+	if req.Name != nil {
+		input.Name = req.Name
+	}
+	if req.Description != nil {
+		input.Description = req.Description
+	}
+	if req.Status != nil {
+		input.Status = req.Status
+	}
+	if req.Priority != nil {
+		input.Priority = req.Priority
+	}
+	if req.Budget != nil {
+		input.Budget = req.Budget
+	}
+	if req.Deadline != nil {
+		input.Deadline = req.Deadline
+	}
+	if req.Progress != nil {
+		input.Progress = req.Progress
+	}
+
+	project, err := h.service.UpdateProject(id, input)
+	if err != nil {
+		if err.Error() == "project not found" {
+			utils.SendError(c, http.StatusNotFound, "Project not found")
+			return
+		}
+		utils.SendError(c, http.StatusInternalServerError, "Failed to update project")
+		return
+	}
+
+	utils.SendSuccess(c, "Project updated successfully", project)
 }

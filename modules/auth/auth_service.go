@@ -16,6 +16,7 @@ import (
 type AuthService interface {
 	Signup(input SignupInput) (*User, error)
 	Login(input LoginInput) (string, error)
+	ForgotPassword(email string) error
 	GetUsersByIDs(ids []uint) ([]User, error)
 	GetUserByEmail(email string) (*User, error)
 	GetMinimalUserByEmail(email string) (*interfaces.MinimalUser, error)
@@ -154,4 +155,14 @@ func (s *authService) GetUsersByIDs(ids []uint) ([]User, error) {
 
 func (s *authService) GetUserByEmail(email string) (*User, error) {
 	return s.repo.FindUserByEmail(email)
+}
+
+func (s *authService) ForgotPassword(email string) error {
+	_, err := s.repo.FindUserByEmail(email)
+	if err != nil {
+		// Silently ignore — prevent email enumeration attacks
+		return nil
+	}
+	// TODO: Send reset email via utils.SendEmail when email service is configured
+	return nil
 }
