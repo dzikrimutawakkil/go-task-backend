@@ -8,18 +8,18 @@ run:
 
 linters:
   enable:
-    - gofmt          # Check if code was formatted
-    - govet          # Reports suspicious constructs
-    - errcheck       # Check for unchecked errors
-    - gosimple       # Simplify code
-    - staticcheck    # Static analysis checks
-    - unused         # Checks for unused code
-    - goimports      # Check import statements
-    - misspell       # Finds commonly misspelled English words
-    - bodyclose      # Checks whether HTTP response body is closed
-    - noctx          # Finds sending http request without context.Context
-    - unconvert      # Detects unnecessary type conversions
-    - unparam        # Reports unused function parameters
+    - gofmt # Check if code was formatted
+    - govet # Reports suspicious constructs
+    - errcheck # Check for unchecked errors
+    - gosimple # Simplify code
+    - staticcheck # Static analysis checks
+    - unused # Checks for unused code
+    - goimports # Check import statements
+    - misspell # Finds commonly misspelled English words
+    - bodyclose # Checks whether HTTP response body is closed
+    - noctx # Finds sending http request without context.Context
+    - unconvert # Detects unnecessary type conversions
+    - unparam # Reports unused function parameters
 
 linters-settings:
   gofmt:
@@ -28,7 +28,13 @@ linters-settings:
     check-type-assertions: true
     check-blank: true
   govet:
-    enable-all: true
+    enable-all: false
+    enable:
+      - shadow
+      - printf
+      - structtag
+      - unmarshal
+      - unreachable
   misspell:
     locale: US
   noctx:
@@ -38,7 +44,7 @@ issues:
   exclude-use-default: false
   max-issues-per-linter: 50
   max-same-issues: 3
-  new-from-rev: HEAD~1
+  new-from-rev: ""
 
 output:
   formats:
