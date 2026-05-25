@@ -510,7 +510,6 @@ definitions:
         description: True if the request was successful
         type: boolean
     type: object
-host: localhost:8080
 info:
   contact: {}
   description: Task Management RESTful API Backend with authentication, organizations,
@@ -2046,7 +2045,6 @@ paths:
       tags:
       - Tasks
 schemes:
-- http
 - https
 securityDefinitions:
   BearerAuth:

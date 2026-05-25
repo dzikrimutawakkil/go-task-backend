@@ -1,6 +1,5 @@
 {
     "schemes": [
-        "http",
         "https"
     ],
     "swagger": "2.0",
@@ -10,7 +9,6 @@
         "contact": {},
         "version": "1.0.0"
     },
-    "host": "localhost:8080",
     "basePath": "/",
     "paths": {
         "/api/auth/me": {

@@ -29,9 +29,8 @@ import (
 // @title          GoTask API
 // @version        1.0.0
 // @description    Task Management RESTful API Backend with authentication, organizations, projects, tasks, statuses, and labels management.
-// @host           localhost:8080
 // @BasePath       /
-// @schemes        http https
+// @schemes        https
 // @securityDefinitions.apikey BearerAuth
 // @in             header
 // @name           Authorization
@@ -68,9 +67,8 @@ func main() {
 	docs.SwaggerInfo.Title = "GoTask API"
 	docs.SwaggerInfo.Description = "Task Management RESTful API Backend with authentication, organizations, projects, tasks, statuses, and labels management."
 	docs.SwaggerInfo.Version = "1.0.0"
-	docs.SwaggerInfo.Host = "localhost:8080"
 	docs.SwaggerInfo.BasePath = "/"
-	docs.SwaggerInfo.Schemes = []string{"http", "https"}
+	docs.SwaggerInfo.Schemes = []string{"https"}
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Dependency Injection for Auth
