@@ -5,7 +5,7 @@
     ],
     "swagger": "2.0",
     "info": {
-        "description": "JWT Bearer token. Format: 'Bearer {token}'",
+        "description": "Task Management RESTful API Backend with authentication, organizations, projects, tasks, statuses, and labels management.",
         "title": "GoTask API",
         "contact": {},
         "version": "1.0.0"
@@ -3117,6 +3117,14 @@
                     "type": "boolean"
                 }
             }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "JWT Bearer token. Format: 'Bearer {token}'",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }

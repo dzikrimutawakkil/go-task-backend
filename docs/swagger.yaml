@@ -513,7 +513,8 @@ definitions:
 host: localhost:8080
 info:
   contact: {}
-  description: 'JWT Bearer token. Format: ''Bearer {token}'''
+  description: Task Management RESTful API Backend with authentication, organizations,
+    projects, tasks, statuses, and labels management.
   title: GoTask API
   version: 1.0.0
 paths:
@@ -2017,4 +2018,10 @@ paths:
 schemes:
 - http
 - https
+securityDefinitions:
+  BearerAuth:
+    description: 'JWT Bearer token. Format: ''Bearer {token}'''
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

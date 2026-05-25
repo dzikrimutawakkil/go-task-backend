@@ -26,16 +26,16 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-// @title           GoTask API
-// @version         1.0.0
-// @description     Task Management RESTful API Backend with authentication, organizations, projects, tasks, statuses, and labels management.
-// @host            localhost:8080
-// @BasePath        /
-// @schemes         http https
-// @securityDefinition.BearerAuth Security API Key
-// @in              header
-// @name            Authorization
-// @description     JWT Bearer token. Format: 'Bearer {token}'
+// @title          GoTask API
+// @version        1.0.0
+// @description    Task Management RESTful API Backend with authentication, organizations, projects, tasks, statuses, and labels management.
+// @host           localhost:8080
+// @BasePath       /
+// @schemes        http https
+// @securityDefinitions.apikey BearerAuth
+// @in             header
+// @name           Authorization
+// @description    JWT Bearer token. Format: 'Bearer {token}'
 
 func main() {
 	if err := godotenv.Load(); err != nil {
