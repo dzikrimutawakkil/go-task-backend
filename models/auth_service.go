@@ -10,7 +10,7 @@ type MinimalUser struct {
 	Name      string
 	Phone     string
 	Address   string
-	Password  string
+	Password  string `json:"-"`
 	CreatedAt time.Time
 }
 

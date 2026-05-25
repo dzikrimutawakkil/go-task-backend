@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"gotask-backend/models"
 )
 
 // SignupRequest represents the request body for user registration.
@@ -141,7 +142,7 @@ func (h *Handler) Login(c *gin.Context) {
 // @Failure     401 {object} utils.APIResponse "Unauthorized"
 // @Router      /api/auth/me [get]
 func (h *Handler) Me(c *gin.Context) {
-	user := c.MustGet("user").(User)
+	user := c.MustGet("user").(models.MinimalUser)
 	utils.SendSuccess(c, "success", gin.H{
 		"user": user,
 	})

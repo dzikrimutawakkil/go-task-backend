@@ -64,9 +64,16 @@ func RequireAuth(c *gin.Context) {
 
 		// 5. Attach User to request
 		minimalUser := models.MinimalUser{
-			ID: user.ID, // Sesuaikan field ID ini jika namanya berbeda di struct kamu
-			// Kalau MinimalUser butuh Email atau Name, tambahkan di sini
+			ID:        user.ID,
+			Email:     user.Email,
+			Name:      user.Name,
+			Phone:     user.Phone,
+			Address:   user.Address,
+			CreatedAt: user.CreatedAt,
+			// Note: Pastikan kamu mengambil nama field yang benar sesuai definisi struct auth.User kamu
 		}
+
+		c.Set("user", minimalUser)
 
 		// Masukkan MinimalUser ke context, BUKAN auth.User
 		c.Set("user", minimalUser)

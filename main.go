@@ -129,7 +129,7 @@ func main() {
 		KeyFunc:           middlewares.UserKeyFunc,
 	}))
 	{
-		protected.GET("/auth/me", authHandler.Me)
+		protected.GET("/api/auth/me", authHandler.Me)
 		protected.GET("/projects", projectHandler.FindProjects)
 		protected.GET("/projects/:id", projectHandler.GetProject)
 		protected.POST("/projects", projectHandler.CreateProject)
