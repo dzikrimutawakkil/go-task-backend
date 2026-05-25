@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS statuses (
     name VARCHAR(100) NOT NULL,
     color VARCHAR(7) DEFAULT '#6366F1',
     sort_order INT DEFAULT 0,
+    index INT DEFAULT 0,
     version INT DEFAULT 1,
     created_at TIMESTAMP DEFAULT NOW()
 );
