@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gotask-backend/config"
 	"gotask-backend/modules/auth"
+	"gotask-backend/models"
 	"net/http"
 	"os"
 	"strconv"
@@ -62,7 +63,13 @@ func RequireAuth(c *gin.Context) {
 		}
 
 		// 5. Attach User to request
-		c.Set("user", user)
+		minimalUser := models.MinimalUser{
+			ID: user.ID, // Sesuaikan field ID ini jika namanya berbeda di struct kamu
+			// Kalau MinimalUser butuh Email atau Name, tambahkan di sini
+		}
+
+		// Masukkan MinimalUser ke context, BUKAN auth.User
+		c.Set("user", minimalUser)
 
 		// ---------------------------------------------------------
 		// NEW: Handle Organization Context Header (X-Organization-ID)

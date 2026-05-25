@@ -10,6 +10,30 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GetUserOrganizations godoc
+// @Summary     Get user organizations
+// @Description Retrieve a list of all organizations the authenticated user belongs to.
+// @Tags        Organizations
+// @Produce     json
+// @Security    BearerAuth
+// @Success     200 {object} utils.APIResponse{data=[]Organization} "Success"
+// @Failure     401 {object} utils.APIResponse "Unauthorized"
+// @Failure     500 {object} utils.APIResponse "Failed to fetch organizations"
+// @Router      /organizations [get]
+func (h *Handler) GetUserOrganizations(c *gin.Context) {
+	// Ambil user ID dari context (hasil set middleware RequireAuth)
+	user := c.MustGet("user").(models.MinimalUser)
+
+	orgs, err := h.service.GetUserOrganizations(user.ID)
+	if err != nil {
+		utils.SendError(c, http.StatusInternalServerError, "Failed to fetch organizations")
+		return
+	}
+
+	// Jika sukses, kembalikan list organisasinya
+	utils.SendSuccess(c, "Success", orgs)
+}
+
 // CreateOrgRequest represents the request body for creating an organization.
 // @Description Request body for organization creation
 type CreateOrgRequest struct {

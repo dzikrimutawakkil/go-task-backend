@@ -13,11 +13,16 @@ type OrganizationService interface {
 	GetMembers(orgID uint) ([]interfaces.MinimalUser, error)
 	RemoveMember(orgID uint, targetUserID uint, requesterID uint) error
 	UpdateMemberRole(orgID uint, targetUserID uint, newRole models.Role, requesterID uint) error
+	GetUserOrganizations(userID uint) ([]Organization, error)
 }
 
 type organizationService struct {
 	repo        OrganizationRepository
 	authService interfaces.AuthService
+}
+
+func (s *organizationService) GetUserOrganizations(userID uint) ([]Organization, error) {
+	return s.repo.FindOrganizationsByUserID(userID)
 }
 
 func NewOrganizationService(repo OrganizationRepository, authS interfaces.AuthService) OrganizationService {

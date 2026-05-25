@@ -1092,6 +1092,36 @@ paths:
       tags:
       - Auth
   /organizations:
+    get:
+      description: Retrieve a list of all organizations the authenticated user belongs
+        to.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/organizations.Organization'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to fetch organizations
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user organizations
+      tags:
+      - Organizations
     post:
       consumes:
       - application/json

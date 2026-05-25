@@ -152,6 +152,7 @@ func main() {
 		protected.PATCH("/labels/:id", labelHandler.UpdateLabel)
 		protected.DELETE("/labels/:id", labelHandler.DeleteLabel)
 
+		protected.GET("/organizations", orgHandler.GetUserOrganizations)
 		protected.POST("/organizations", orgHandler.CreateOrganization)
 		protected.POST("/organizations/invite", orgHandler.InviteMember)
 		protected.GET("/organizations/members", orgHandler.GetMembers)

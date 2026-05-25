@@ -1,7 +1,7 @@
 package middlewares
 
 import (
-	"gotask-backend/modules/auth"
+	"gotask-backend/models"
 	"gotask-backend/utils"
 	"time"
 
@@ -32,7 +32,7 @@ func StructuredLoggerMiddleware() gin.HandlerFunc {
 		var userID uint
 		var orgID string
 		if user, exists := c.Get("user"); exists {
-			u := user.(auth.User)
+			u := user.(models.MinimalUser)
 			userID = u.ID
 		}
 		if oid, exists := c.Get("org_id"); exists {

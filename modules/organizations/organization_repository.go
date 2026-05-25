@@ -18,6 +18,7 @@ type OrganizationRepository interface {
 	UpdateMemberRole(orgID uint, userID uint, newRole models.Role) error
 	RemoveMember(orgID uint, userID uint) error
 	GetMemberRoleByOrgID(userID uint, orgID string) (models.Role, error)
+	FindOrganizationsByUserID(userID uint) ([]Organization, error)
 }
 
 type organizationRepository struct {
@@ -114,4 +115,15 @@ func parseUint(s string) (uint, error) {
 		return 0, err
 	}
 	return uint(v), nil
+}
+
+// FindOrganizationsByUserID get all organization that followed by userID
+func (r *organizationRepository) FindOrganizationsByUserID(userID uint) ([]Organization, error) {
+	var orgs []Organization
+	err := r.db.
+		Joins("JOIN organization_users ON organization_users.organization_id = organizations.id").
+		Where("organization_users.user_id = ?", userID).
+		Find(&orgs).Error
+		
+	return orgs, err
 }

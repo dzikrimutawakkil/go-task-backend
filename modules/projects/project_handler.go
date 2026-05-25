@@ -1,7 +1,7 @@
 package projects
 
 import (
-	"gotask-backend/modules/auth"
+	"gotask-backend/models"
 	"gotask-backend/utils"
 	"net/http"
 	"strconv"
@@ -83,7 +83,7 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 		return
 	}
 
-	user := c.MustGet("user").(auth.User)
+	user := c.MustGet("user").(models.MinimalUser)
 
 	input := CreateProjectInput{
 		Name:           jsonInput.Name,
@@ -116,7 +116,7 @@ func (h *ProjectHandler) DeleteProject(c *gin.Context) {
 	id := c.Param("id")
 	orgID := c.MustGet("org_id").(string)
 
-	user := c.MustGet("user").(auth.User)
+	user := c.MustGet("user").(models.MinimalUser)
 
 	if err := h.service.DeleteProject(id, orgID, user.ID); err != nil {
 		if err.Error() == "insufficient permission to delete project" {

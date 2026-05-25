@@ -123,7 +123,7 @@ func (s *authService) GetUserByEmail(email string) (*User, error) {
 ```go
 // auth_handler.go
 func (h *Handler) Me(c *gin.Context) {
-    user := c.MustGet("user").(auth.User)
+    user := c.MustGet("user").(models.MinimalUser)
     utils.SendSuccess(c, "success", gin.H{
         "user": user,
     })
