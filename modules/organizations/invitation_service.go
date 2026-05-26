@@ -103,7 +103,7 @@ func (s *invitationService) CreateInvitation(orgID uint, email string, role mode
 	// Send email invitation
 	appURL := os.Getenv("APP_URL")
 	if appURL == "" {
-		appURL = "http://localhost:8080"
+		appURL = "https://journey-rpg-lotus-collect.trycloudflare.com"
 	}
 	inviteURL := appURL + "/invite/" + invitation.Token
 
@@ -208,7 +208,7 @@ func (s *invitationService) ResendInvitation(invitationID uint) error {
 	// Resend email
 	appURL := os.Getenv("APP_URL")
 	if appURL == "" {
-		appURL = "http://localhost:8080"
+		appURL = "https://journey-rpg-lotus-collect.trycloudflare.com"
 	}
 	inviteURL := appURL + "/invite/" + invitation.Token
 

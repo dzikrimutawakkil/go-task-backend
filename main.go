@@ -9,6 +9,7 @@ import (
 	"gotask-backend/modules/auth"
 	"gotask-backend/modules/clients"
 	"gotask-backend/modules/invoices"
+	"gotask-backend/modules/licenses"
 	"gotask-backend/modules/organizations"
 	"gotask-backend/modules/projects"
 	"gotask-backend/modules/tasks"
@@ -106,10 +107,17 @@ func main() {
 	invoiceService := invoices.NewInvoiceService(invoiceRepo, clientRepo)
 	invoiceHandler := invoices.NewInvoiceHandler(invoiceService)
 
+	// Dependency Injection for Licenses
+	licenseRepo := licenses.NewLicenseRepository(config.DB)
+	licenseService := licenses.NewLicenseService(licenseRepo)
+	licenseHandler := licenses.NewLicenseHandler(licenseService)
+
 	// PUBLIC ROUTES
 	r.POST("/signup", authHandler.Signup)
 	r.POST("/login", authHandler.Login)
 	r.POST("/forgot-password", authHandler.ForgotPassword)
+	r.POST("/reset-password", authHandler.ResetPassword)
+	r.POST("/api/licenses/validate", licenseHandler.ValidateLicense)
 
 	// PROTECTED ROUTES
 	// Q12: Rate limiting — per IP for unauthenticated, per user for authenticated
@@ -128,6 +136,8 @@ func main() {
 	}))
 	{
 		protected.GET("/api/auth/me", authHandler.Me)
+		protected.PATCH("/api/users/me", authHandler.UpdateProfile)
+		protected.PATCH("/api/users/me/password", authHandler.ChangePassword)
 		protected.GET("/projects", projectHandler.FindProjects)
 		protected.GET("/projects/:id", projectHandler.GetProject)
 		protected.POST("/projects", projectHandler.CreateProject)
@@ -170,6 +180,10 @@ func main() {
 		protected.GET("/invoices/:id", invoiceHandler.GetInvoice)
 		protected.PATCH("/invoices/:id", invoiceHandler.UpdateInvoice)
 		protected.DELETE("/invoices/:id", invoiceHandler.DeleteInvoice)
+		protected.PATCH("/invoices/:id/mark-paid", invoiceHandler.MarkPaid)
+
+		protected.POST("/api/licenses/activate", licenseHandler.ActivateLicense)
+		protected.POST("/api/licenses", licenseHandler.CreateLicenses)
 	}
 
 	// Public invitation endpoints (accept doesn't require org context)

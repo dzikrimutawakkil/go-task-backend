@@ -12,15 +12,15 @@ import (
 
 // Request DTOs
 type CreateInvoiceRequest struct {
-	ClientID *uint                   `json:"client_id"`
-	ProjectID *uint                  `json:"project_id"`
-	Title     *string                `json:"title"`
-	Amount    float64                `json:"amount" binding:"required" example:"500000"`
-	Tax       *float64               `json:"tax" example:"50000"`
-	Discount  *float64               `json:"discount" example:"0"`
-	DueDate   *string                `json:"due_date" example:"2026-06-30T00:00:00Z"`
-	Notes     *string                `json:"notes" example:"Payment due within 30 days"`
-	Items     *[]InvoiceItemRequest  `json:"items"`
+	ClientID  *uint                 `json:"client_id"`
+	ProjectID *uint                 `json:"project_id"`
+	Title     *string               `json:"title"`
+	Amount    float64               `json:"amount" binding:"required" example:"500000"`
+	Tax       *float64              `json:"tax" example:"50000"`
+	Discount  *float64              `json:"discount" example:"0"`
+	DueDate   *string               `json:"due_date" example:"2026-06-30T00:00:00Z"`
+	Notes     *string               `json:"notes" example:"Payment due within 30 days"`
+	Items     *[]InvoiceItemRequest `json:"items"`
 }
 
 type InvoiceItemRequest struct {
@@ -31,16 +31,21 @@ type InvoiceItemRequest struct {
 }
 
 type UpdateInvoiceRequest struct {
-	ClientID  *uint                  `json:"client_id"`
-	ProjectID *uint                  `json:"project_id"`
-	Title     *string                `json:"title"`
-	Amount    *float64               `json:"amount" example:"500000"`
-	Tax       *float64               `json:"tax" example:"50000"`
-	Discount  *float64               `json:"discount" example:"0"`
-	Status    *string                `json:"status" example:"paid"`
-	DueDate   *string                `json:"due_date" example:"2026-06-30T00:00:00Z"`
-	Notes     *string                `json:"notes"`
-	Items     *[]InvoiceItemRequest  `json:"items"`
+	ClientID  *uint                 `json:"client_id"`
+	ProjectID *uint                 `json:"project_id"`
+	Title     *string               `json:"title"`
+	Amount    *float64              `json:"amount" example:"500000"`
+	Tax       *float64              `json:"tax" example:"50000"`
+	Discount  *float64              `json:"discount" example:"0"`
+	Status    *string               `json:"status" example:"paid"`
+	DueDate   *string               `json:"due_date" example:"2026-06-30T00:00:00Z"`
+	Notes     *string               `json:"notes"`
+	Items     *[]InvoiceItemRequest `json:"items"`
+}
+
+type MarkPaidRequest struct {
+	AmountPaid float64 `json:"amount_paid" binding:"required,min=0" example:"500000"`
+	PaidAt     *string `json:"paid_at" example:"2026-05-20T10:00:00Z"`
 }
 
 type Handler struct {
@@ -220,16 +225,16 @@ func (h *Handler) UpdateInvoice(c *gin.Context) {
 	}
 
 	input := UpdateInvoiceInput{
-		ClientID: req.ClientID,
+		ClientID:  req.ClientID,
 		ProjectID: req.ProjectID,
-		Title:    req.Title,
-		Amount:   req.Amount,
-		Tax:      req.Tax,
-		Discount: req.Discount,
-		Status:   req.Status,
-		DueDate:  dueDate,
-		Notes:    req.Notes,
-		Items:    items,
+		Title:     req.Title,
+		Amount:    req.Amount,
+		Tax:       req.Tax,
+		Discount:  req.Discount,
+		Status:    req.Status,
+		DueDate:   dueDate,
+		Notes:     req.Notes,
+		Items:     items,
 	}
 
 	invoice, err := h.service.UpdateInvoice(uint(id), input)
@@ -264,4 +269,52 @@ func (h *Handler) DeleteInvoice(c *gin.Context) {
 	}
 
 	utils.SendSuccess(c, "Invoice deleted successfully")
+}
+
+// MarkPaid godoc
+// @Summary     Mark invoice as paid
+// @Description Marks an invoice as paid and syncs revenue to client atomically.
+// @Tags        Invoices
+// @Accept      json
+// @Produce     json
+// @Param       id path int true "Invoice ID"
+// @Param       body body MarkPaidRequest true "Mark paid payload"
+// @Security    BearerAuth
+// @Success     200 {object} utils.APIResponse "Invoice marked as paid"
+// @Failure     400 {object} utils.APIResponse "Validation error or invoice cancelled"
+// @Failure     404 {object} utils.APIResponse "Invoice not found"
+// @Router      /invoices/{id}/mark-paid [patch]
+func (h *Handler) MarkPaid(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		utils.SendError(c, http.StatusBadRequest, "Invalid invoice ID")
+		return
+	}
+
+	var req MarkPaidRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.SendError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	input := MarkAsPaidInput{
+		AmountPaid: req.AmountPaid,
+		PaidAt:     req.PaidAt,
+	}
+
+	invoice, err := h.service.MarkAsPaid(uint(id), input)
+	if err != nil {
+		if err.Error() == "cannot mark a cancelled invoice as paid" {
+			utils.SendError(c, http.StatusBadRequest, err.Error())
+			return
+		}
+		if err.Error() == "invoice is already paid" {
+			utils.SendError(c, http.StatusBadRequest, err.Error())
+			return
+		}
+		utils.SendError(c, http.StatusNotFound, "Invoice not found")
+		return
+	}
+
+	utils.SendSuccess(c, "Invoice marked as paid", invoice)
 }

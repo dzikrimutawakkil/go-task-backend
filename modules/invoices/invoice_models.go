@@ -63,15 +63,15 @@ type CreateInvoiceInput struct {
 }
 
 type UpdateInvoiceInput struct {
-	ClientID   *uint
-	ProjectID  *uint
-	Title      *string
-	Amount     *float64
-	Tax        *float64
-	Discount   *float64
-	Status     *string
-	DueDate    *time.Time
-	PaidAt     *time.Time
-	Notes      *string
-	Items      InvoiceItems
+	ClientID  *uint
+	ProjectID *uint
+	Title     *string
+	Amount    *float64
+	Tax       *float64
+	Discount  *float64
+	Status    *string
+	DueDate   *time.Time
+	PaidAt    *time.Time
+	Notes     *string
+	Items     InvoiceItems
 }

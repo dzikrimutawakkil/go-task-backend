@@ -3,8 +3,9 @@ package middlewares
 import (
 	"fmt"
 	"gotask-backend/config"
-	"gotask-backend/modules/auth"
 	"gotask-backend/models"
+	"gotask-backend/modules/auth"
+	"gotask-backend/utils"
 	"net/http"
 	"os"
 	"strconv"
@@ -26,14 +27,16 @@ func RequireAuth(c *gin.Context) {
 	// 1. Get the token from the header
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header missing"})
+		utils.SendError(c, http.StatusUnauthorized, "Authorization header missing")
+		c.Abort()
 		return
 	}
 
 	// Header format is usually "Bearer <token>"
 	tokenParts := strings.Split(authHeader, " ")
 	if len(tokenParts) != 2 {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token format"})
+		utils.SendError(c, http.StatusUnauthorized, "Invalid token format")
+		c.Abort()
 		return
 	}
 	tokenString := tokenParts[1]
@@ -49,7 +52,8 @@ func RequireAuth(c *gin.Context) {
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		// 3. Check expiration
 		if float64(time.Now().Unix()) > claims["exp"].(float64) {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Token expired"})
+			utils.SendError(c, http.StatusUnauthorized, "Token expired")
+			c.Abort()
 			return
 		}
 
@@ -58,24 +62,24 @@ func RequireAuth(c *gin.Context) {
 		config.DB.First(&user, claims["sub"])
 
 		if user.ID == 0 {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+			utils.SendError(c, http.StatusUnauthorized, "User not found")
+			c.Abort()
 			return
 		}
 
 		// 5. Attach User to request
 		minimalUser := models.MinimalUser{
-			ID:        user.ID,
-			Email:     user.Email,
-			Name:      user.Name,
-			Phone:     user.Phone,
-			Address:   user.Address,
-			CreatedAt: user.CreatedAt,
-			// Note: Pastikan kamu mengambil nama field yang benar sesuai definisi struct auth.User kamu
+			ID:            user.ID,
+			Email:         user.Email,
+			Name:          user.Name,
+			Phone:         user.Phone,
+			Address:       user.Address,
+			Plan:          user.Plan,
+			LicenseKey:    user.LicenseKey,
+			LicenseStatus: user.LicenseStatus,
+			CreatedAt:     user.CreatedAt,
 		}
 
-		c.Set("user", minimalUser)
-
-		// Masukkan MinimalUser ke context, BUKAN auth.User
 		c.Set("user", minimalUser)
 
 		// ---------------------------------------------------------
@@ -92,9 +96,8 @@ func RequireAuth(c *gin.Context) {
 
 			if count == 0 {
 				// Stop the request here! Security Block.
-				c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-					"error": "Access denied: You are not a member of the organization specified in X-Organization-ID",
-				})
+				utils.SendError(c, http.StatusForbidden, "Access denied: You are not a member of the organization specified in X-Organization-ID")
+				c.Abort()
 				return
 			}
 
@@ -104,9 +107,8 @@ func RequireAuth(c *gin.Context) {
 			// No X-Organization-ID header → auto-resolve to user's personal workspace
 			orgID, err := resolvePersonalOrgID(user.ID)
 			if err != nil {
-				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-					"error": "Personal workspace not found",
-				})
+				utils.SendError(c, http.StatusInternalServerError, "Personal workspace not found")
+				c.Abort()
 				return
 			}
 			c.Set("org_id", strconv.FormatUint(uint64(orgID), 10))
@@ -114,7 +116,8 @@ func RequireAuth(c *gin.Context) {
 
 		c.Next()
 	} else {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		utils.SendError(c, http.StatusUnauthorized, err.Error())
+		c.Abort()
 	}
 }
 

@@ -2,6 +2,7 @@ package invoices
 
 import (
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -15,6 +16,7 @@ type InvoiceService interface {
 	CreateInvoice(input CreateInvoiceInput) (*Invoice, error)
 	UpdateInvoice(id uint, input UpdateInvoiceInput) (*Invoice, error)
 	DeleteInvoice(id uint) error
+	MarkAsPaid(id uint, input MarkAsPaidInput) (*Invoice, error)
 	GenerateInvoiceNumber() string
 }
 
@@ -63,18 +65,18 @@ func (s *invoiceService) CreateInvoice(input CreateInvoiceInput) (*Invoice, erro
 	invoice := Invoice{
 		OrganizationID: input.OrganizationID,
 		InvoiceNumber:  invoiceNumber,
-		ClientID:      input.ClientID,
-		ProjectID:     input.ProjectID,
-		Title:         input.Title,
-		Amount:        input.Amount,
-		Tax:           input.Tax,
-		Discount:      input.Discount,
-		AmountPaid:    0,
-		Status:        "draft",
-		DueDate:       input.DueDate,
-		Notes:         input.Notes,
-		Items:         input.Items,
-		Version:       1,
+		ClientID:       input.ClientID,
+		ProjectID:      input.ProjectID,
+		Title:          input.Title,
+		Amount:         input.Amount,
+		Tax:            input.Tax,
+		Discount:       input.Discount,
+		AmountPaid:     0,
+		Status:         "draft",
+		DueDate:        input.DueDate,
+		Notes:          input.Notes,
+		Items:          input.Items,
+		Version:        1,
 	}
 
 	if err := s.repo.Create(&invoice); err != nil {
@@ -148,4 +150,42 @@ func (s *invoiceService) DeleteInvoice(id uint) error {
 		return err
 	}
 	return s.repo.Delete(invoice)
+}
+
+// MarkAsPaidInput represents the input for marking an invoice as paid
+type MarkAsPaidInput struct {
+	AmountPaid float64
+	PaidAt     *string
+}
+
+// MarkAsPaid marks an invoice as paid with atomic revenue sync
+func (s *invoiceService) MarkAsPaid(id uint, input MarkAsPaidInput) (*Invoice, error) {
+	// Validate amount_paid is not negative
+	if input.AmountPaid < 0 {
+		return nil, errors.New("amount_paid cannot be negative")
+	}
+
+	// Get the invoice first to check status and get client_id
+	invoice, err := s.repo.FindByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if already paid
+	if invoice.Status == "paid" {
+		return nil, ErrInvoiceAlreadyPaid
+	}
+
+	// Check if already cancelled
+	if invoice.Status == "cancelled" {
+		return nil, ErrInvoiceCancelled
+	}
+
+	var clientID uint
+	if invoice.ClientID != nil {
+		clientID = *invoice.ClientID
+	}
+
+	// Use the transactional method
+	return s.repo.MarkAsPaidAndSyncRevenue(id, clientID, input.AmountPaid, input.PaidAt)
 }

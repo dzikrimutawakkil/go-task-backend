@@ -29,15 +29,15 @@ func (s *clientService) GetClient(id uint) (*Client, error) {
 func (s *clientService) CreateClient(input CreateClientInput) (*Client, error) {
 	client := Client{
 		OrganizationID: input.OrganizationID,
-		Name:          input.Name,
-		Email:         input.Email,
-		WhatsApp:      input.WhatsApp,
-		Phone:         input.Phone,
-		Company:       input.Company,
-		Website:       input.Website,
-		Address:       input.Address,
-		Notes:         input.Notes,
-		TotalRevenue:  0,
+		Name:           input.Name,
+		Email:          input.Email,
+		WhatsApp:       input.WhatsApp,
+		Phone:          input.Phone,
+		Company:        input.Company,
+		Website:        input.Website,
+		Address:        input.Address,
+		Notes:          input.Notes,
+		TotalRevenue:   0,
 	}
 	if err := s.repo.Create(&client); err != nil {
 		return nil, err

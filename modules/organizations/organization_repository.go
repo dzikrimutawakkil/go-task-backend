@@ -124,6 +124,6 @@ func (r *organizationRepository) FindOrganizationsByUserID(userID uint) ([]Organ
 		Joins("JOIN organization_users ON organization_users.organization_id = organizations.id").
 		Where("organization_users.user_id = ?", userID).
 		Find(&orgs).Error
-		
+
 	return orgs, err
 }

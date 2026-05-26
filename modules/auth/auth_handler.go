@@ -1,15 +1,15 @@
 package auth
 
 import (
-	"gotask-backend/utils"
 	"net/http"
+
+	"gotask-backend/utils"
 
 	"github.com/gin-gonic/gin"
 	"gotask-backend/models"
 )
 
-// SignupRequest represents the request body for user registration.
-// @Description Request body for user signup
+// Request DTOs
 type SignupRequest struct {
 	Email    string `json:"email" binding:"required" example:"user@example.com"`
 	Password string `json:"password" binding:"required" example:"securepassword123"`
@@ -18,23 +18,33 @@ type SignupRequest struct {
 	Address  string `json:"address" example:"Jl. Sudirman No.123, Jakarta"`
 }
 
-// LoginRequest represents the request body for user login.
-// @Description Request body for user login
 type LoginRequest struct {
 	Email    string `json:"email" binding:"required" example:"user@example.com"`
 	Password string `json:"password" binding:"required" example:"securepassword123"`
 }
 
-// ForgotPasswordRequest represents the request body for password reset.
-// @Description Request body for password reset
 type ForgotPasswordRequest struct {
 	Email string `json:"email" binding:"required" example:"user@example.com"`
 }
 
-// AuthResponse represents the data payload for auth endpoints.
-// @Description Auth data payload containing user info or token
+type ResetPasswordRequest struct {
+	Token       string `json:"token" binding:"required" example:"abc123..."`
+	NewPassword string `json:"new_password" binding:"required,min=8" example:"newpassword123"`
+}
+
+type UpdateProfileRequest struct {
+	Name    *string `json:"name" example:"John Doe"`
+	Phone   *string `json:"phone" example:"+628123456789"`
+	Address *string `json:"address" example:"Jl. Sudirman No.123, Jakarta"`
+}
+
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password" binding:"required" example:"oldpassword123"`
+	NewPassword     string `json:"new_password" binding:"required,min=8" example:"newpassword123"`
+}
+
 type AuthResponse struct {
-	User  *User  `json:"user,omitempty"`
+	User  any    `json:"user,omitempty"`
 	Token string `json:"token,omitempty"`
 }
 
@@ -173,4 +183,116 @@ func (h *Handler) ForgotPassword(c *gin.Context) {
 	}
 
 	utils.SendSuccess(c, "If the email exists, a reset link has been sent")
+}
+
+// ResetPassword godoc
+// @Summary     Reset password with token
+// @Description Validates the reset token and sets a new password. Token is single-use.
+// @Tags        Auth
+// @Accept      json
+// @Produce     json
+// @Param       body body ResetPasswordRequest true "Reset password payload"
+// @Success     200 {object} utils.APIResponse "Password reset successful"
+// @Failure     400 {object} utils.APIResponse "Invalid, expired, or already used token"
+// @Router      /reset-password [post]
+func (h *Handler) ResetPassword(c *gin.Context) {
+	var req ResetPasswordRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.SendError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	err := h.authService.ResetPassword(req.Token, req.NewPassword)
+	if err != nil {
+		utils.SendError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	utils.SendSuccess(c, "Password reset successful")
+}
+
+// UpdateProfile godoc
+// @Summary     Update current user profile
+// @Description Updates the authenticated user's profile (name, phone, address). Email cannot be changed.
+// @Tags        Profile
+// @Accept      json
+// @Produce     json
+// @Security    BearerAuth
+// @Param       body body UpdateProfileRequest true "Profile update payload"
+// @Success     200 {object} utils.APIResponse "Profile updated successfully"
+// @Failure     400 {object} utils.APIResponse "Validation error"
+// @Failure     401 {object} utils.APIResponse "Unauthorized"
+// @Router      /api/users/me [patch]
+func (h *Handler) UpdateProfile(c *gin.Context) {
+	user := c.MustGet("user").(models.MinimalUser)
+
+	var req UpdateProfileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.SendError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// Validate name is not empty string
+	if req.Name != nil && *req.Name == "" {
+		utils.SendError(c, http.StatusBadRequest, "name cannot be empty")
+		return
+	}
+
+	updatedUser, err := h.authService.UpdateUserProfile(user.ID, "", "", "")
+	if err != nil {
+		utils.SendError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// Apply updates if provided
+	if req.Name != nil {
+		updatedUser.Name = *req.Name
+	}
+	if req.Phone != nil {
+		updatedUser.Phone = *req.Phone
+	}
+	if req.Address != nil {
+		updatedUser.Address = *req.Address
+	}
+
+	updatedUser, err = h.authService.UpdateUserProfile(user.ID, updatedUser.Name, updatedUser.Phone, updatedUser.Address)
+	if err != nil {
+		utils.SendError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	utils.SendSuccess(c, "Profile updated successfully", gin.H{
+		"user": updatedUser,
+	})
+}
+
+// ChangePassword godoc
+// @Summary     Change password
+// @Description Changes the authenticated user's password after validating the current one.
+// @Tags        Profile
+// @Accept      json
+// @Produce     json
+// @Security    BearerAuth
+// @Param       body body ChangePasswordRequest true "Password change payload"
+// @Success     200 {object} utils.APIResponse "Password changed successfully"
+// @Failure     400 {object} utils.APIResponse "Validation error or incorrect current password"
+// @Failure     401 {object} utils.APIResponse "Unauthorized"
+// @Router      /api/users/me/password [patch]
+func (h *Handler) ChangePassword(c *gin.Context) {
+	user := c.MustGet("user").(models.MinimalUser)
+
+	var req ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.SendError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	err := h.authService.ChangePassword(user.ID, req.CurrentPassword, req.NewPassword)
+	if err != nil {
+		utils.SendError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	utils.SendSuccess(c, "Password changed successfully")
 }

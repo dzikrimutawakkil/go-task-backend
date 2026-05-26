@@ -49,6 +49,246 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/licenses": {
+            "post": {
+                "description": "Bulk creates license keys. Requires x-admin-secret header.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Licenses"
+                ],
+                "summary": "Create license keys (admin only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin secret key",
+                        "name": "x-admin-secret",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "License keys to create",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/licenses.CreateLicenseRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Licenses created",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid admin secret",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/licenses/activate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Activates a license key for the authenticated user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Licenses"
+                ],
+                "summary": "Activate a license key",
+                "parameters": [
+                    {
+                        "description": "License key",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/licenses.ActivateLicenseRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "License activated",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid or already used key",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/licenses/validate": {
+            "post": {
+                "description": "Checks if a license key is valid without requiring authentication.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Licenses"
+                ],
+                "summary": "Validate a license key",
+                "parameters": [
+                    {
+                        "description": "License key to validate",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/licenses.ValidateLicenseRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Validation result",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid key format",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/me": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates the authenticated user's profile (name, phone, address). Email cannot be changed.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Profile"
+                ],
+                "summary": "Update current user profile",
+                "parameters": [
+                    {
+                        "description": "Profile update payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.UpdateProfileRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Profile updated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/me/password": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Changes the authenticated user's password after validating the current one.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Profile"
+                ],
+                "summary": "Change password",
+                "parameters": [
+                    {
+                        "description": "Password change payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.ChangePasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Password changed successfully",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error or incorrect current password",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/clients": {
             "get": {
                 "security": [
@@ -725,6 +965,64 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Invoice not found",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/invoices/{id}/mark-paid": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Marks an invoice as paid and syncs revenue to client atomically.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Invoices"
+                ],
+                "summary": "Mark invoice as paid",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Invoice ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Mark paid payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/invoices.MarkPaidRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Invoice marked as paid",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error or invoice cancelled",
                         "schema": {
                             "$ref": "#/definitions/utils.APIResponse"
                         }
@@ -1987,6 +2285,46 @@ const docTemplate = `{
                 }
             }
         },
+        "/reset-password": {
+            "post": {
+                "description": "Validates the reset token and sets a new password. Token is single-use.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Reset password with token",
+                "parameters": [
+                    {
+                        "description": "Reset password payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.ResetPasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Password reset successful",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid, expired, or already used token",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/signup": {
             "post": {
                 "description": "Register a new user with email and password. Returns the created user object and JWT token.",
@@ -2441,8 +2779,25 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "auth.ChangePasswordRequest": {
+            "type": "object",
+            "required": [
+                "current_password",
+                "new_password"
+            ],
+            "properties": {
+                "current_password": {
+                    "type": "string",
+                    "example": "oldpassword123"
+                },
+                "new_password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "example": "newpassword123"
+                }
+            }
+        },
         "auth.ForgotPasswordRequest": {
-            "description": "Request body for password reset",
             "type": "object",
             "required": [
                 "email"
@@ -2455,7 +2810,6 @@ const docTemplate = `{
             }
         },
         "auth.LoginRequest": {
-            "description": "Request body for user login",
             "type": "object",
             "required": [
                 "email",
@@ -2472,8 +2826,25 @@ const docTemplate = `{
                 }
             }
         },
+        "auth.ResetPasswordRequest": {
+            "type": "object",
+            "required": [
+                "new_password",
+                "token"
+            ],
+            "properties": {
+                "new_password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "example": "newpassword123"
+                },
+                "token": {
+                    "type": "string",
+                    "example": "abc123..."
+                }
+            }
+        },
         "auth.SignupRequest": {
-            "description": "Request body for user signup",
             "type": "object",
             "required": [
                 "email",
@@ -2497,6 +2868,23 @@ const docTemplate = `{
                 "password": {
                     "type": "string",
                     "example": "securepassword123"
+                },
+                "phone": {
+                    "type": "string",
+                    "example": "+628123456789"
+                }
+            }
+        },
+        "auth.UpdateProfileRequest": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string",
+                    "example": "Jl. Sudirman No.123, Jakarta"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "John Doe"
                 },
                 "phone": {
                     "type": "string",
@@ -2651,6 +3039,23 @@ const docTemplate = `{
                 }
             }
         },
+        "invoices.MarkPaidRequest": {
+            "type": "object",
+            "required": [
+                "amount_paid"
+            ],
+            "properties": {
+                "amount_paid": {
+                    "type": "number",
+                    "minimum": 0,
+                    "example": 500000
+                },
+                "paid_at": {
+                    "type": "string",
+                    "example": "2026-05-20T10:00:00Z"
+                }
+            }
+        },
         "invoices.UpdateInvoiceRequest": {
             "type": "object",
             "properties": {
@@ -2691,6 +3096,55 @@ const docTemplate = `{
                 },
                 "title": {
                     "type": "string"
+                }
+            }
+        },
+        "licenses.ActivateLicenseRequest": {
+            "type": "object",
+            "required": [
+                "key"
+            ],
+            "properties": {
+                "key": {
+                    "type": "string",
+                    "example": "ABCD-1234-EFGH-5678"
+                }
+            }
+        },
+        "licenses.CreateLicenseRequest": {
+            "type": "object",
+            "required": [
+                "keys"
+            ],
+            "properties": {
+                "keys": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/licenses.LicenseInput"
+                    }
+                }
+            }
+        },
+        "licenses.LicenseInput": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "licenses.ValidateLicenseRequest": {
+            "type": "object",
+            "required": [
+                "key"
+            ],
+            "properties": {
+                "key": {
+                    "type": "string",
+                    "example": "ABCD-1234-EFGH-5678"
                 }
             }
         },

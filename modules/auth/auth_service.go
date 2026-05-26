@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -8,6 +10,7 @@ import (
 
 	"gotask-backend/internal/interfaces"
 	"gotask-backend/modules/organizations"
+	"gotask-backend/utils"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -17,8 +20,12 @@ type AuthService interface {
 	Signup(input SignupInput) (*User, error)
 	Login(input LoginInput) (string, error)
 	ForgotPassword(email string) error
+	ResetPassword(token string, newPassword string) error
 	GetUsersByIDs(ids []uint) ([]User, error)
 	GetUserByEmail(email string) (*User, error)
+	GetUserByID(id uint) (*User, error)
+	UpdateUserProfile(userID uint, name string, phone string, address string) (*User, error)
+	ChangePassword(userID uint, currentPassword string, newPassword string) error
 	GetMinimalUserByEmail(email string) (*interfaces.MinimalUser, error)
 	GetMinimalUsersByIDs(ids []uint) ([]interfaces.MinimalUser, error)
 }
@@ -158,11 +165,142 @@ func (s *authService) GetUserByEmail(email string) (*User, error) {
 }
 
 func (s *authService) ForgotPassword(email string) error {
-	_, err := s.repo.FindUserByEmail(email)
+	user, err := s.repo.FindUserByEmail(email)
 	if err != nil {
 		// Silently ignore — prevent email enumeration attacks
 		return nil
 	}
-	// TODO: Send reset email via utils.SendEmail when email service is configured
+
+	// Generate secure random token (32 bytes = 64 hex chars)
+	tokenBytes := make([]byte, 32)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return errors.New("failed to generate reset token")
+	}
+	token := hex.EncodeToString(tokenBytes)
+
+	// Save token to database with 1 hour expiry
+	prt := PasswordResetToken{
+		Token:     token,
+		UserID:    user.ID,
+		ExpiresAt: time.Now().Add(1 * time.Hour),
+	}
+	if err := s.repo.SavePasswordResetToken(&prt); err != nil {
+		return errors.New("failed to save reset token")
+	}
+
+	// Send reset email (uses SMTP if configured)
+	resetURL := fmt.Sprintf("%s/reset-password?token=%s",
+		os.Getenv("APP_URL"), token)
+
+	err = utils.SendEmail(user.Email, "Password Reset Request",
+		fmt.Sprintf("Click the link to reset your password (expires in 1 hour):\n%s\n\nIf you didn't request this, ignore this email.", resetURL))
+	if err != nil {
+		utils.GetLogger().Warn("Failed to send reset email", "error", err)
+		// Don't fail — token is saved, user can request again
+	}
+	return nil
+}
+
+func (s *authService) ResetPassword(token string, newPassword string) error {
+	// Find the token
+	prt, err := s.repo.FindPasswordResetToken(token)
+	if err != nil {
+		return errors.New("invalid token")
+	}
+
+	// Check if token is used
+	if prt.UsedAt != nil {
+		return errors.New("token already used")
+	}
+
+	// Check if token is expired
+	if time.Now().After(prt.ExpiresAt) {
+		return errors.New("token has expired")
+	}
+
+	// Validate password length
+	if len(newPassword) < 8 {
+		return errors.New("password must be at least 8 characters")
+	}
+
+	// Hash new password
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), 10)
+	if err != nil {
+		return errors.New("failed to hash password")
+	}
+
+	// Update user password
+	if err := s.repo.UpdateUserPassword(prt.UserID, string(hash)); err != nil {
+		return errors.New("failed to update password")
+	}
+
+	// Mark token as used (single-use)
+	if err := s.repo.MarkTokenUsed(prt); err != nil {
+		utils.GetLogger().Warn("Failed to mark token as used", "error", err)
+	}
+
+	return nil
+}
+
+func (s *authService) GetUserByID(id uint) (*User, error) {
+	return s.repo.FindUserByID(id)
+}
+
+func (s *authService) UpdateUserProfile(userID uint, name string, phone string, address string) (*User, error) {
+	user, err := s.repo.FindUserByID(userID)
+	if err != nil {
+		return nil, errors.New("user not found")
+	}
+
+	// Update fields (email is intentionally excluded from this method)
+	if name != "" {
+		user.Name = name
+	}
+	if phone != "" {
+		user.Phone = phone
+	}
+	if address != "" {
+		user.Address = address
+	}
+
+	// Note: We use repo.Update without transaction since it's a simple update
+	if err := s.repo.UpdateUserProfileFields(user); err != nil {
+		return nil, errors.New("failed to update profile")
+	}
+
+	return user, nil
+}
+
+func (s *authService) ChangePassword(userID uint, currentPassword string, newPassword string) error {
+	user, err := s.repo.FindUserByID(userID)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	// Verify current password
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(currentPassword)); err != nil {
+		return errors.New("current password is incorrect")
+	}
+
+	// Check that new password is different
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(newPassword)); err == nil {
+		return errors.New("new password must be different")
+	}
+
+	// Validate new password length
+	if len(newPassword) < 8 {
+		return errors.New("password must be at least 8 characters")
+	}
+
+	// Hash and save new password
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), 10)
+	if err != nil {
+		return errors.New("failed to hash password")
+	}
+
+	if err := s.repo.UpdateUserPassword(userID, string(hash)); err != nil {
+		return errors.New("failed to update password")
+	}
+
 	return nil
 }
