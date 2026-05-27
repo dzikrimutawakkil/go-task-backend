@@ -15,6 +15,10 @@ type ProjectRepository interface {
 	Update(project *Project) error
 	Delete(project *Project) error
 
+	// Q19: Project status helper
+	GetDefaultStatusID() (string, error)
+	SetProjectStatus(projectID uint, statusID string) error
+
 	// Task cleanup helpers
 	DeleteTasksByProject(projectID uint) error
 	ClearTaskAssignees(projectID uint) error
@@ -28,13 +32,38 @@ func NewProjectRepository(db *gorm.DB) ProjectRepository {
 	return &projectRepository{db}
 }
 
-// Fetch all projects in the Organization
+// Fetch all projects in the Organization with their status
 func (r *projectRepository) FindAllByOrg(orgID string) ([]Project, error) {
 	var projects []Project
 	err := r.db.
 		Scopes(models.ByOrg(orgID)).
 		Find(&projects).Error
-	return projects, err
+	if err != nil {
+		return nil, err
+	}
+
+	// Populate embedded ProjectStatus field from project_statuses table
+	for i := range projects {
+		if projects[i].StatusID != nil {
+			var statusData struct {
+				ID    string
+				Name  string
+				Color string
+			}
+			err := r.db.Table("project_statuses").
+				Select("id, name, color").
+				Where("id = ?", *projects[i].StatusID).
+				Scan(&statusData).Error
+			if err == nil {
+				projects[i].ProjectStatus = &ProjectStatus{
+					ID:    statusData.ID,
+					Name:  statusData.Name,
+					Color: statusData.Color,
+				}
+			}
+		}
+	}
+	return projects, nil
 }
 
 // Find a specific project
@@ -59,6 +88,26 @@ func (r *projectRepository) FindByID(id string) (*Project, error) {
 	if err := r.db.First(&project, id).Error; err != nil {
 		return nil, err
 	}
+
+	// Populate embedded ProjectStatus field
+	if project.StatusID != nil {
+		var statusData struct {
+			ID    string
+			Name  string
+			Color string
+		}
+		err := r.db.Table("project_statuses").
+			Select("id, name, color").
+			Where("id = ?", *project.StatusID).
+			Scan(&statusData).Error
+		if err == nil {
+			project.ProjectStatus = &ProjectStatus{
+				ID:    statusData.ID,
+				Name:  statusData.Name,
+				Color: statusData.Color,
+			}
+		}
+	}
 	return &project, nil
 }
 
@@ -76,4 +125,22 @@ func (r *projectRepository) ClearTaskAssignees(projectID uint) error {
 
 func (r *projectRepository) DeleteTasksByProject(projectID uint) error {
 	return r.db.Where("project_id = ?", projectID).Delete(&tasks.Task{}).Error
+}
+
+// GetDefaultStatusID retrieves the default project status ID (Active) as string
+// Q19: Project Status Workflow
+func (r *projectRepository) GetDefaultStatusID() (string, error) {
+	var result struct {
+		ID string
+	}
+	err := r.db.Table("project_statuses").
+		Select("id").
+		Where("name = 'Active'").
+		First(&result).Error
+	return result.ID, err
+}
+
+// SetProjectStatus sets the status_id for a project
+func (r *projectRepository) SetProjectStatus(projectID uint, statusID string) error {
+	return r.db.Exec("UPDATE projects SET status_id = ? WHERE id = ?", statusID, projectID).Error
 }

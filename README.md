@@ -6,281 +6,226 @@
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Build Status](https://github.com/your-org/gotask-backend/actions/workflows/ci.yml/badge.svg)
 
-## 📋 Table of Contents
-
-- [Overview](#overview)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Prerequisites](#prerequisites)
-- [Quick Start](#quick-start)
-- [API Documentation](#api-documentation)
-- [Project Structure](#project-structure)
-- [Deployment Guide](#deployment-guide)
-- [Contributing](#contributing)
-- [License](#license)
-
 ## 🎯 Overview
 
-GoTask is a SaaS-ready task management backend API designed to support multi-tenant organizations with role-based access control. Built with modern Go practices, it provides secure authentication, comprehensive task management, and scalable architecture.
-
-**Key Characteristics:**
-- JWT-based authentication
-- Organization & Project hierarchy
-- Task CRUD with labels, statuses, and priorities
-- Optimistic locking for concurrent updates
-- Rate limiting middleware
-- Structured JSON logging
+GoTask is a SaaS-ready task management backend API with multi-tenant organization support, role-based access control, and complete task lifecycle management — dari registration hingga invoice billing.
 
 ## ✨ Features
 
 ### Core Features
-- [x] **Authentication**: Signup, Login, JWT tokens, Forgot Password, Get Current User
-- [x] **Personal Workspace**: Auto-creates personal org on registration (zero-friction onboarding)
-- [x] **Organizations**: Create, invite members, role management (Owner/Admin/Member)
-- [x] **Projects**: Full CRUD with status, priority, progress, budget, deadline
-- [x] **Tasks**: Full CRUD with labels, statuses, priorities, assignees, search & filters
-- [x] **Statuses**: Auto-created with projects, reorderable via index
-- [x] **Labels**: Custom labels per project
-- [x] **Clients**: Contact management with revenue tracking
-- [x] **Invoices**: Invoice generation with auto-numbering (INV-YYYY-XXX) and revenue sync
+
+| Feature | Status |
+|---|---|
+| **User Registration** — Signup + auto-login dengan token JWT | ✅ |
+| **Personal Workspace** — Auto-create workspace saat register | ✅ |
+| **Workspace Switching** — Pindah antar organisasi dengan 1 endpoint | ✅ |
+| **Project Management** — CRUD dengan auto-generate labels | ✅ |
+| **Task Management** — Full CRUD dengan assignee, labels, priorities | ✅ |
+| **Auto-generated Labels** — 5 label dibuat otomatis saat project dibuat | ✅ |
+| **Project Status Workflow** — Active, On Hold, Completed, Archived | ✅ |
+| **License Warning Banner** — Soft warning di setiap response API | ✅ |
+| **Clients** — Kontak + revenue tracking | ✅ |
+| **Invoices** — Auto-generate nomor + revenue sync saat lunas | ✅ |
 
 ### Security Features
-- [x] **RBAC**: Role-based access control (Admin, Manager, Member)
-- [x] **Rate Limiting**: Per-IP and per-user limits
-- [x] **Password Hashing**: bcrypt with cost factor 10
-- [x] **CORS**: Configurable cross-origin policies
-- [x] **Non-root Docker**: Runs as non-root user
 
-### Developer Experience
-- [x] **Swagger UI**: Interactive API documentation at `/swagger/*any`
-- [x] **Graceful Shutdown**: Clean server termination
-- [x] **Structured Logging**: JSON logs for production
-- [x] **Health Checks**: `/health` and `/ready` endpoints
+| Feature | Status |
+|---|---|
+| **JWT Authentication** — Stateless login | ✅ |
+| **RBAC** — Owner/Admin/Member scopes | ✅ |
+| **Rate Limiting** — Per-IP + per-user | ✅ |
+| **Password Hashing** — bcrypt | ✅ |
+| **Optimistic Locking** — Version column untuk race condition | ✅ |
+| **Graceful Shutdown** — SIGTERM handling | ✅ |
+| **Structured Logging** — JSON slog | ✅ |
+| **Health Checks** — `/health` + `/ready` | ✅ |
 
-## 🛠 Tech Stack
+### API Features
 
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| Language | Go 1.24 | Core application |
-| Framework | Gin | HTTP routing & middleware |
-| ORM | GORM | Database operations |
-| Database | PostgreSQL 16+ | Primary data store |
-| Auth | JWT (golang-jwt) | Stateless authentication |
-| Migrations | golang-migrate | Schema version control |
-| Documentation | swaggo | OpenAPI/Swagger generation |
-| Container | Docker, Docker Compose | Deployment & dev environment |
-
-## 📦 Prerequisites
-
-| Requirement | Version | Notes |
-|------------|---------|-------|
-| Go | 1.24+ | [Install Guide](https://go.dev/doc/install) |
-| PostgreSQL | 16+ | [Install Guide](https://www.postgresql.org/download/) |
-| Docker | Latest | Optional, for containerized setup |
-| Git | Any | Clone repository |
+| Feature | Status |
+|---|---|
+| **Swagger/OpenAPI** — Interactive docs di `/swagger` | ✅ |
+| **Search** — Full-text search task (GIN index) | ✅ |
+| **Task Filters** — By assignee, status, priority, date | ✅ |
+| **Invite Members** — Email dengan token expiry + resend | ✅ |
+| **Docker** — Multi-stage production build | ✅ |
+| **CI/CD** — GitHub Actions | ✅ |
 
 ## 🚀 Quick Start
 
-### 1. Clone & Setup Environment
+### 1. Clone & Setup
 
 ```bash
-git clone https://github.com/your-org/gotask-backend.git
+git clone https://github.com/your-org/gotask-backend
 cd gotask-backend
-```
-
-### 2. Configure Environment Variables
-
-```bash
-# Copy example environment file
 cp .env.example .env
-
-# Edit with your values
-nano .env
+# Edit .env dengan nilai Anda
 ```
 
-**Required Variables:**
+### 2. Environment Variables
 
 ```env
-# Database
 DB_HOST=localhost
 DB_USER=postgres
-DB_PASSWORD=your_secure_password
+DB_PASSWORD=your_password
 DB_NAME=gotaskdb
 DB_PORT=5432
-
-# JWT Authentication
-SECRET_KEY=your_super_secret_key_at_least_32_chars
-
-# Application
-APP_URL=http://localhost:8080
+SECRET_KEY=your_secret_key_minimum_32_chars
 LOG_LEVEL=debug
 ```
 
-### 3. Start Database
+### 3. Jalankan
 
 ```bash
-# Using Docker Compose (recommended)
-docker-compose up -d postgres
+# Development
+go run main.go
 
-# Or use existing PostgreSQL instance
+# Docker
+docker-compose up --build
+
+# Production build
+go build -o main .
+./main
 ```
 
-### 4. Run Migrations
-
-```bash
-# Auto-migrate on startup (default behavior)
-# OR run manually:
-migrate -path ./migrations -database "postgres://postgres:password@localhost:5432/gotaskdb?sslmode=disable" up
-```
-
-### 5. Run the Application
-
-```bash
-# Development mode (with live reload)
-air
-
-# OR production build
-go build -o gotask-backend .
-./gotask-backend
-```
-
-### 6. Verify Installation
+### 4. Verifikasi
 
 ```bash
 # Health check
 curl http://localhost:8080/health
 
-# Swagger UI
+# Swagger docs
 open http://localhost:8080/swagger/index.html
 ```
 
-## 📚 API Documentation
+## 📋 User Flow
 
-### Base URL
+### Registration → Project → Task
 
 ```
-http://localhost:8080
+1. User daftar (signup)
+   → Sistem buat akun + personal workspace + role Owner
+   → User langsung login otomatis
+
+2. User buat project
+   → Sistem auto-generate 5 label: Todo, On Going, Done, Delivered, Canceled
+   → Sistem auto-generate project status: Active
+   → Project siap dipakai
+
+3. User invite member
+   → Kirim email invitation
+   → Member terima link → auto join workspace
+
+4. User buat task
+   → Default status: Todo (label pertama)
+   → Assignee dari member workspace
+
+5. User update task
+   → Pindahkan antar label
+   → Ganti assignee, priority, deadline
 ```
 
-### Authentication Endpoints
+## 🔌 API Reference
 
-| Method | Endpoint | Description | Auth? |
-|--------|----------|-------------|-------|
-| POST | `/signup` | Register new user (returns `user` + `token`) | No |
-| POST | `/login` | Authenticate (returns `user` + `token`) | No |
-| POST | `/forgot-password` | Request password reset | No |
-| GET | `/api/auth/me` | Get current authenticated user | Yes |
-
-### Project Endpoints (Protected)
+### Public Endpoints
 
 | Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/projects` | List all projects in org |
-| GET | `/projects/:id` | Get single project |
-| POST | `/projects` | Create new project |
-| PATCH | `/projects/:id` | Update project |
+|---|---|---|
+| POST | `/signup` | Register + auto-login (returns user + token) |
+| POST | `/login` | Login (returns user + token) |
+| POST | `/forgot-password` | Request reset link |
+| POST | `/reset-password` | Reset dengan token |
+| GET | `/health` | Liveness check |
+| GET | `/ready` | Readiness check |
+
+### Protected Endpoints (Bearer Token Required)
+
+#### Auth & Profile
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/auth/me` | Get current user |
+| PATCH | `/api/users/me` | Update profile |
+| PATCH | `/api/users/me/password` | Change password |
+| POST | `/api/users/me/switch-organization` | Pindah workspace |
+
+#### Projects
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/projects` | List projects (with project_status) |
+| POST | `/projects` | Create project (auto-generate labels) |
+| GET | `/projects/:id` | Get project detail |
+| PATCH | `/projects/:id` | Update project (+ status_id) |
 | DELETE | `/projects/:id` | Delete project |
 
-### Task Endpoints (Protected)
-
+#### Labels
 | Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/projects/:id/tasks` | List tasks by project (paginated) |
-| GET | `/tasks/search` | Full-text search + filters |
-| POST | `/tasks` | Create new task |
-| PATCH | `/tasks/:id` | Update task |
-| DELETE | `/tasks/:id` | Delete task |
-
-### Status Endpoints (Protected)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/projects/:id/status` | List project statuses |
-| POST | `/projects/:id/status` | Create status |
-| PATCH | `/status/:id` | Update status (reorderable) |
-| DELETE | `/status/:id` | Delete status |
-
-### Label Endpoints (Protected)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/projects/:id/labels` | List project labels |
+|---|---|---|
+| GET | `/projects/:id/labels` | List labels |
 | POST | `/projects/:id/labels` | Create label |
 | PATCH | `/labels/:id` | Update label |
 | DELETE | `/labels/:id` | Delete label |
 
-### Client Endpoints (Protected)
-
+#### Tasks
 | Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/clients` | List all clients |
-| POST | `/clients` | Create client |
-| GET | `/clients/:id` | Get single client |
-| PATCH | `/clients/:id` | Update client |
-| DELETE | `/clients/:id` | Delete client |
-| GET | `/clients/stats` | Get stats (`total`, `totalRevenue`, `avgRevenue`) |
+|---|---|---|
+| GET | `/projects/:id/tasks` | List tasks |
+| GET | `/tasks/search` | Search tasks |
+| POST | `/tasks` | Create task |
+| PATCH | `/tasks/:id` | Update task |
+| DELETE | `/tasks/:id` | Delete task |
 
-### Invoice Endpoints (Protected)
-
+#### Organizations
 | Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/invoices` | List all invoices |
-| POST | `/invoices` | Create invoice (auto-generates INV-YYYY-XXX) |
-| GET | `/invoices/:id` | Get single invoice |
-| PATCH | `/invoices/:id` | Update invoice (set status=`paid` → revenue sync) |
-| DELETE | `/invoices/:id` | Delete invoice |
-
-### Organization Endpoints (Protected)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/organizations` | Create organization |
+|---|---|---|
+| GET | `/organizations` | List user's orgs |
+| POST | `/organizations` | Create org |
 | POST | `/organizations/invite` | Invite member |
 | GET | `/organizations/members` | List members |
-| PATCH | `/organizations/members/:user_id` | Update member role |
-| DELETE | `/organizations/members/:user_id` | Remove member |
-| GET | `/organizations/invitations` | List pending invitations |
+| PATCH | `/organizations/members/:id` | Update role |
+| DELETE | `/organizations/members/:id` | Remove member |
+| GET | `/organizations/invitations` | Pending invitations |
 
-### Invitation Endpoints
-
-| Method | Endpoint | Description | Auth? |
-|--------|----------|-------------|-------|
-| POST | `/invite/accept` | Accept invitation | Yes |
-| POST | `/invite/resend` | Resend invitation | Yes |
-| DELETE | `/invite/:token` | Revoke invitation | Yes |
-
-### Health Endpoints
-
-| Method | Endpoint | Description | Auth? |
-|--------|----------|-------------|-------|
-| GET | `/health` | Liveness check | No |
-| GET | `/ready` | Readiness check | No |
-
-### Request Headers
-
-All protected endpoints require:
-
-```
-Authorization: Bearer <jwt_token>
-```
+#### Clients & Invoices
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/clients` | List clients |
+| POST | `/clients` | Create client |
+| GET | `/clients/stats` | Revenue statistics |
+| PATCH | `/clients/:id` | Update client |
+| GET | `/invoices` | List invoices |
+| POST | `/invoices` | Create invoice |
+| PATCH | `/invoices/:id/mark-paid` | Mark lunas + sync revenue |
 
 ### Response Format
 
+#### Success
 ```json
 {
   "success": true,
   "message": "Operation successful",
-  "data": { ... }
+  "data": { ... },
+  "license_warning": { ... }  // Q17: jika expired/free plan
 }
 ```
 
-### Error Response
-
+#### Error
 ```json
 {
   "success": false,
   "message": "Error description",
-  "data": null
+  "data": null,
+  "license_warning": { ... }
+}
+```
+
+#### License Warning (Q17)
+```json
+{
+  "license_warning": {
+    "expired": true,
+    "days_remaining": -7,
+    "message": "License expired. Please upgrade to continue premium features."
+  }
 }
 ```
 
@@ -288,143 +233,69 @@ Authorization: Bearer <jwt_token>
 
 ```
 gotask-backend/
-├── config/              # Database connection & configuration
-├── docs/                # Swagger generated documentation
-│   └── specs/done/      # Archived specs
-├── handlers/             # HTTP handlers (health, etc.)
-├── middlewares/          # Gin middlewares (auth, logging, CORS, rate limit)
-├── migrations/           # Database migration files
-├── models/              # Database models
-├── modules/             # Feature modules (Clean Architecture)
-│   ├── auth/            # Authentication module (Signup, Login, Me, ForgotPassword)
-│   ├── clients/         # Client management module (CRUD + stats)
-│   ├── invoices/        # Invoice management module (CRUD + auto-numbering + revenue sync)
-│   ├── organizations/  # Organization module
-│   ├── projects/        # Project module
-│   └── tasks/           # Task, Status, Label module
-├── utils/               # Utility functions (logger, response helpers)
-├── main.go              # Application entry point
-├── Dockerfile           # Multi-stage production Dockerfile
-├── docker-compose.yml  # Development environment
-├── .env.example        # Environment variable template
-├── go.mod / go.sum     # Go dependencies
-└── README.md           # This file
+├── config/             # Database connection + seeders
+├── docs/               # Swagger docs + user flows
+│   ├── FLOW-USER.md    # Panduan pengguna (non-technical)
+│   ├── TECHNICAL.md    # Developer guide
+│   └── specs/done/     # Archived specs
+├── middlewares/         # Auth, CORS, rate limit, logging
+├── models/             # Shared models (scopes, roles)
+├── modules/            # Modular monolith
+│   ├── auth/           # Signup, login, password
+│   ├── clients/        # Client CRUD + stats
+│   ├── invoices/       # Invoice + auto-numbering + revenue sync
+│   ├── licenses/       # License validation + activation
+│   ├── organizations/  # Org + members + invitations
+│   ├── projects/       # Project CRUD + labels
+│   └── tasks/          # Task, status, priority, labels
+├── utils/               # Response helpers, logger
+├── migrations/           # Database migrations
+├── main.go              # Entry point + DI + routing
+├── docker-compose.yml    # Development environment
+└── Dockerfile           # Production build
 ```
 
-### Module Structure (Clean Architecture)
+## 🛠 Tech Stack
 
-Each module follows the same pattern:
+| Component | Technology |
+|---|---|
+| Language | Go 1.24 |
+| Framework | Gin v1.11 |
+| Database | PostgreSQL 15+ |
+| ORM | GORM v1.31 |
+| Auth | JWT (golang-jwt/jwt/v5) |
+| Migrations | golang-migrate |
+| Container | Docker |
+| Docs | Swagger/OpenAPI |
 
-```
-modules/<module>/
-├── *_handler.go    # HTTP handlers (controllers)
-├── *_service.go    # Business logic
-├── *_repository.go # Data access layer
-└── *_model.go      # Data models
-```
+## 🔒 Security
 
-## 🚢 Deployment Guide
+- Password di-hash dengan bcrypt
+- JWT expires 30 hari
+- Rate limiting: 100 req/min (IP) + 500 req/min (user)
+- CORS configurable untuk development
+- RBAC Owner/Admin/Member
 
-See [DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed deployment instructions.
+## 📚 Documentation
 
-### Quick Deploy Options
+| File | Audience |
+|---|---|
+| `docs/FLOW-USER.md` | Pengguna biasa (non-technical) |
+| `docs/TECHNICAL.md` | Developer (technical) |
+| `/swagger` | API consumers |
+| `CLAUDE.md` | AI Engineer (project context) |
 
-#### Docker Compose (Development/Staging)
+## 🚢 Deployment
 
 ```bash
+# Docker Compose (development)
 docker-compose up -d
-```
 
-#### Render
-
-1. Connect GitHub repository
-2. Configure environment variables
-3. Set build command: `go build -o gotask-backend .`
-4. Set start command: `./gotask-backend`
-
-#### Railway
-
-1. Import project from GitHub
-2. Add PostgreSQL database
-3. Configure environment variables
-4. Deploy automatically
-
-#### VPS (Ubuntu)
-
-```bash
-# 1. Install dependencies
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y docker.io docker-compose
-
-# 2. Clone and configure
-git clone https://github.com/your-org/gotask-backend.git
-cd gotask-backend
-cp .env.example .env
-nano .env
-
-# 3. Run with Docker
+# Production
 docker build -t gotask-backend .
 docker run -d -p 8080:8080 --env-file .env gotask-backend
 ```
 
-### Environment Variables for Production
-
-```env
-# Database (Production)
-DB_HOST=production-db-host
-DB_USER=production_user
-DB_PASSWORD=secure_production_password
-DB_NAME=gotask_production
-DB_PORT=5432
-
-# JWT
-SECRET_KEY=very_long_random_secret_key_at_least_32_characters
-
-# Application
-GIN_MODE=release
-LOG_LEVEL=warn
-APP_URL=https://api.gotask.app
-
-# Optional: SMTP for email notifications
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=notifications@yourapp.com
-SMTP_PASSWORD=app_password
-```
-
-## 🤝 Contributing
-
-1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature/your-feature`
-3. **Commit changes**: `git commit -m 'Add new feature'`
-4. **Push to branch**: `git push origin feature/your-feature`
-5. **Open a Pull Request**
-
-### Development Setup
-
-```bash
-# Install development tools
-go install github.com/cosmtrek/air@latest  # Live reload
-go install github.com/swaggo/swag/cmd/swag@latest  # Swagger
-
-# Run with live reload
-air
-
-# Generate Swagger docs
-swag init -g main.go -o docs/generated
-```
-
-### Code Standards
-
-- Follow Go idioms and `gofmt`
-- Run `golangci-lint run` before committing
-- Write tests for new features
-- Update Swagger docs when changing API
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ---
 
-**Built with ❤️ for the GoTask community**
+Built with Go + PostgreSQL | All phases complete | Ready for production

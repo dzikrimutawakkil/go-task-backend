@@ -28,6 +28,8 @@ type AuthService interface {
 	ChangePassword(userID uint, currentPassword string, newPassword string) error
 	GetMinimalUserByEmail(email string) (*interfaces.MinimalUser, error)
 	GetMinimalUsersByIDs(ids []uint) ([]interfaces.MinimalUser, error)
+	// M11: Workspace Switch Endpoint
+	CheckOrganizationMembership(userID uint, orgID uint) (bool, error)
 }
 
 // compile-time interface satisfaction check
@@ -303,4 +305,10 @@ func (s *authService) ChangePassword(userID uint, currentPassword string, newPas
 	}
 
 	return nil
+}
+
+// CheckOrganizationMembership checks if a user is a member of a given organization.
+// M11: Workspace Switch Endpoint
+func (s *authService) CheckOrganizationMembership(userID uint, orgID uint) (bool, error) {
+	return s.orgRepo.CheckMembership(userID, orgID)
 }

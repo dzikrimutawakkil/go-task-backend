@@ -22,6 +22,7 @@ type UpdateProjectRequest struct {
 	Name        *string  `json:"name" example:"Updated Project Name"`
 	Description *string  `json:"description" example:"Updated description"`
 	Status      *string  `json:"status" example:"in_progress"`
+	StatusID    *string  `json:"status_id" example:"uuid-string" description:"Project status ID (UUID) from project_statuses table"`
 	Priority    *string  `json:"priority" example:"high"`
 	Budget      *float64 `json:"budget" example:"5000000"`
 	Deadline    *string  `json:"deadline" example:"2026-06-30"`
@@ -182,8 +183,8 @@ func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 	if req.Description != nil {
 		input.Description = req.Description
 	}
-	if req.Status != nil {
-		input.Status = req.Status
+	if req.StatusID != nil {
+		input.StatusID = req.StatusID
 	}
 	if req.Priority != nil {
 		input.Priority = req.Priority

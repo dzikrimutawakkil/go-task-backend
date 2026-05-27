@@ -69,6 +69,14 @@ definitions:
     - password
     - phone
     type: object
+  auth.SwitchOrganizationRequest:
+    properties:
+      organization_id:
+        example: 1
+        type: integer
+    required:
+    - organization_id
+    type: object
   auth.UpdateProfileRequest:
     properties:
       address:
@@ -375,10 +383,21 @@ definitions:
         type: string
       progress:
         type: integer
-      status:
+      project_status:
+        $ref: '#/definitions/projects.ProjectStatus'
+      status_id:
         type: string
       version:
         type: integer
+    type: object
+  projects.ProjectStatus:
+    properties:
+      color:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
     type: object
   projects.UpdateProjectRequest:
     description: Request body for project update (all fields optional)
@@ -403,6 +422,9 @@ definitions:
         type: integer
       status:
         example: in_progress
+        type: string
+      status_id:
+        example: uuid-string
         type: string
     type: object
   tasks.CreateLabelRequest:
@@ -578,16 +600,25 @@ definitions:
         type: string
     type: object
   utils.APIResponse:
-    description: Standard API response envelope used by all endpoints
     properties:
-      data:
-        description: Response payload, omitted when nil
+      data: {}
+      license_warning:
+        $ref: '#/definitions/utils.LicenseWarning'
       message:
-        description: Human-readable message describing the result
         type: string
       success:
-        description: True if the request was successful
         type: boolean
+    type: object
+  utils.LicenseWarning:
+    properties:
+      days_remaining:
+        type: integer
+      expired:
+        type: boolean
+      expired_at:
+        type: string
+      message:
+        type: string
     type: object
 info:
   contact: {}
@@ -770,6 +801,39 @@ paths:
       security:
       - BearerAuth: []
       summary: Change password
+      tags:
+      - Profile
+  /api/users/me/switch-organization:
+    post:
+      consumes:
+      - application/json
+      description: Switch the user's active organization context. User must be a member
+        of the target organization.
+      parameters:
+      - description: Organization switch payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth.SwitchOrganizationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Organization switched successfully
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "400":
+          description: Invalid organization ID
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "403":
+          description: Not a member of the organization
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Switch active organization
       tags:
       - Profile
   /clients:

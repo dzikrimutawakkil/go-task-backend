@@ -13,6 +13,7 @@ type OrganizationRepository interface {
 	FindPersonalOrgByOwnerID(ownerID uint) (*Organization, error)
 	AddMember(orgID uint, userID uint, role models.Role) error
 	IsMember(userID uint, orgID uint) (bool, error)
+	CheckMembership(userID uint, orgID uint) (bool, error) // M11: alias for IsMember
 	FindMemberIDs(orgID uint) ([]uint, error)
 	GetMemberRole(userID uint, orgID uint) (models.Role, error)
 	UpdateMemberRole(orgID uint, userID uint, newRole models.Role) error
@@ -66,6 +67,11 @@ func (r *organizationRepository) IsMember(userID uint, orgID uint) (bool, error)
 		Where("user_id = ? AND organization_id = ?", userID, orgID).
 		Count(&count).Error
 	return count > 0, err
+}
+
+// CheckMembership is an alias for IsMember, used by M11: Workspace Switch Endpoint
+func (r *organizationRepository) CheckMembership(userID uint, orgID uint) (bool, error) {
+	return r.IsMember(userID, orgID)
 }
 
 func (r *organizationRepository) FindMemberIDs(orgID uint) ([]uint, error) {

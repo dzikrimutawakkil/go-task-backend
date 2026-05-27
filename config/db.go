@@ -42,7 +42,49 @@ func ConnectDatabase() {
 	// Q10: Run golang-migrate migrations on startup
 	runMigrations()
 
+	// Q19: Seed project statuses
+	seedProjectStatuses()
+
 	fmt.Println("Database connected and migrated!")
+}
+
+// seedProjectStatuses seeds the project_statuses table with default statuses if not exists.
+// Q19: Project Status Workflow
+func seedProjectStatuses() {
+	type ProjectStatusSeed struct {
+		ID    string `gorm:"column:id"`
+		Name  string `gorm:"column:name;uniqueIndex"`
+		Color string `gorm:"column:color"`
+	}
+
+	// Use raw SQL to ensure we query the correct table
+	defaultStatuses := []struct {
+		Name  string
+		Color string
+	}{
+		{Name: "Active", Color: "#22C55E"},
+		{Name: "On Hold", Color: "#F59E0B"},
+		{Name: "Completed", Color: "#3B82F6"},
+		{Name: "Archived", Color: "#6B7280"},
+	}
+
+	for _, s := range defaultStatuses {
+		var count int64
+		// Use Table() to explicitly specify the table name
+		result := DB.Table("project_statuses").Where("name = ?", s.Name).Count(&count)
+		if result.Error != nil {
+			log.Printf("Warning: failed to check project status '%s': %v", s.Name, result.Error)
+			continue
+		}
+		if count == 0 {
+			err := DB.Exec("INSERT INTO project_statuses (id, name, color) VALUES (gen_random_uuid(), ?, ?)", s.Name, s.Color).Error
+			if err != nil {
+				log.Printf("Warning: failed to seed project status '%s': %v", s.Name, err)
+			} else {
+				log.Printf("Seeded project status: %s", s.Name)
+			}
+		}
+	}
 }
 
 // runMigrations runs all pending SQL migrations using golang-migrate.

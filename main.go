@@ -138,6 +138,7 @@ func main() {
 		protected.GET("/api/auth/me", authHandler.Me)
 		protected.PATCH("/api/users/me", authHandler.UpdateProfile)
 		protected.PATCH("/api/users/me/password", authHandler.ChangePassword)
+		protected.POST("/api/users/me/switch-organization", authHandler.SwitchOrganization) // M11: Workspace Switch
 		protected.GET("/projects", projectHandler.FindProjects)
 		protected.GET("/projects/:id", projectHandler.GetProject)
 		protected.POST("/projects", projectHandler.CreateProject)

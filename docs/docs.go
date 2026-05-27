@@ -289,6 +289,57 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/users/me/switch-organization": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Switch the user's active organization context. User must be a member of the target organization.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Profile"
+                ],
+                "summary": "Switch active organization",
+                "parameters": [
+                    {
+                        "description": "Organization switch payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.SwitchOrganizationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Organization switched successfully",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid organization ID",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Not a member of the organization",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/clients": {
             "get": {
                 "security": [
@@ -2875,6 +2926,18 @@ const docTemplate = `{
                 }
             }
         },
+        "auth.SwitchOrganizationRequest": {
+            "type": "object",
+            "required": [
+                "organization_id"
+            ],
+            "properties": {
+                "organization_id": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
         "auth.UpdateProfileRequest": {
             "type": "object",
             "properties": {
@@ -3316,11 +3379,28 @@ const docTemplate = `{
                 "progress": {
                     "type": "integer"
                 },
-                "status": {
+                "project_status": {
+                    "$ref": "#/definitions/projects.ProjectStatus"
+                },
+                "status_id": {
                     "type": "string"
                 },
                 "version": {
                     "type": "integer"
+                }
+            }
+        },
+        "projects.ProjectStatus": {
+            "type": "object",
+            "properties": {
+                "color": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
                 }
             }
         },
@@ -3355,6 +3435,10 @@ const docTemplate = `{
                 "status": {
                     "type": "string",
                     "example": "in_progress"
+                },
+                "status_id": {
+                    "type": "string",
+                    "example": "uuid-string"
                 }
             }
         },
@@ -3608,19 +3692,34 @@ const docTemplate = `{
             }
         },
         "utils.APIResponse": {
-            "description": "Standard API response envelope used by all endpoints",
             "type": "object",
             "properties": {
-                "data": {
-                    "description": "Response payload, omitted when nil"
+                "data": {},
+                "license_warning": {
+                    "$ref": "#/definitions/utils.LicenseWarning"
                 },
                 "message": {
-                    "description": "Human-readable message describing the result",
                     "type": "string"
                 },
                 "success": {
-                    "description": "True if the request was successful",
                     "type": "boolean"
+                }
+            }
+        },
+        "utils.LicenseWarning": {
+            "type": "object",
+            "properties": {
+                "days_remaining": {
+                    "type": "integer"
+                },
+                "expired": {
+                    "type": "boolean"
+                },
+                "expired_at": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
                 }
             }
         }

@@ -35,7 +35,7 @@ type CreateProjectInput struct {
 type UpdateProjectInput struct {
 	Name        *string
 	Description *string
-	Status      *string
+	StatusID    *string
 	Priority    *string
 	Budget      *float64
 	Deadline    *string
@@ -62,8 +62,10 @@ func (s *projectService) UpdateProject(id string, input UpdateProjectInput) (*Pr
 	if input.Description != nil {
 		project.Description = *input.Description
 	}
-	if input.Status != nil {
-		project.Status = *input.Status
+	if input.StatusID != nil {
+		if err := s.repo.SetProjectStatus(project.ID, *input.StatusID); err != nil {
+			return nil, err
+		}
 	}
 	if input.Priority != nil {
 		project.Priority = *input.Priority
@@ -81,10 +83,17 @@ func (s *projectService) UpdateProject(id string, input UpdateProjectInput) (*Pr
 	if err := s.repo.Update(project); err != nil {
 		return nil, err
 	}
-	return project, nil
+	return s.repo.FindByID(id)
 }
 
 func (s *projectService) CreateProject(input CreateProjectInput, userID uint) (*Project, error) {
+	// Q19: Auto-assign default "Active" status
+	defaultStatusID, err := s.repo.GetDefaultStatusID()
+	if err != nil {
+		return nil, errors.New("failed to get default project status")
+	}
+
+	// Create the project first
 	project := Project{
 		Name:           input.Name,
 		Description:    input.Description,
@@ -95,22 +104,29 @@ func (s *projectService) CreateProject(input CreateProjectInput, userID uint) (*
 		return nil, err
 	}
 
-	if err := s.taskService.CreateDefaultStatuses(project.ID); err != nil {
+	// Set status_id
+	if err := s.repo.SetProjectStatus(project.ID, defaultStatusID); err != nil {
 		return nil, err
 	}
 
-	// Re-fetch to populate relations (optional)
-	return &project, nil
+	// Q18: Create default task statuses and labels
+	if err := s.taskService.CreateDefaultStatuses(project.ID); err != nil {
+		return nil, err
+	}
+	if err := s.taskService.CreateDefaultLabels(project.ID); err != nil {
+		return nil, err
+	}
+
+	// Re-fetch to get ProjectStatus populated
+	return s.repo.FindByID(strconv.FormatUint(uint64(project.ID), 10))
 }
 
 func (s *projectService) DeleteProject(id string, orgID string, requesterID uint) error {
-	// 1. Security: Find Project AND ensure it belongs to the Context Org
 	project, err := s.repo.FindByIDAndOrg(id, orgID)
 	if err != nil {
 		return errors.New("project not found or access denied")
 	}
 
-	// 2. RBAC: Check permission
 	orgIDUint, _ := strconv.ParseUint(orgID, 10, 64)
 	requesterRole, err := s.orgRepo.GetMemberRole(requesterID, uint(orgIDUint))
 	if err != nil {
@@ -121,7 +137,6 @@ func (s *projectService) DeleteProject(id string, orgID string, requesterID uint
 		return errors.New("insufficient permission to delete project")
 	}
 
-	// 3. Cleanup
 	if err := s.repo.ClearTaskAssignees(project.ID); err != nil {
 		return err
 	}
@@ -129,6 +144,5 @@ func (s *projectService) DeleteProject(id string, orgID string, requesterID uint
 		return err
 	}
 
-	// 3. Delete
 	return s.repo.Delete(project)
 }

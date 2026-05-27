@@ -3,6 +3,7 @@ package tasks
 import (
 	"errors"
 	"gotask-backend/modules/auth"
+	"log"
 	"strconv"
 	"time"
 )
@@ -15,6 +16,7 @@ type TaskService interface {
 	SearchTasks(orgID string, query string, filters TaskFilters, page int, limit int) ([]Task, int64, error)
 
 	CreateDefaultStatuses(projectID uint) error
+	CreateDefaultLabels(projectID uint) error
 	GetStatuses(projectID string) ([]Status, error)
 	CreateNewStatus(projectID uint, name string, index int) (*Status, error)
 	UpdateStatus(id string, name *string, index *int) (*Status, error)
@@ -222,6 +224,39 @@ func (s *taskService) CreateDefaultStatuses(projectID uint) error {
 		if err := s.repo.CreateStatus(&status); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// CreateDefaultLabels creates 5 default labels for a project.
+// Q18: Auto-generate default labels saat project dibuat
+func (s *taskService) CreateDefaultLabels(projectID uint) error {
+	// 5 labels per spec: Todo, On Going, Done, Delivered, Canceled
+	defaultLabels := []struct {
+		Name  string
+		Color string
+		Index int
+	}{
+		{Name: "Todo", Color: "#E2E8F0", Index: 0},
+		{Name: "On Going", Color: "#3B82F6", Index: 1},
+		{Name: "Done", Color: "#22C55E", Index: 2},
+		{Name: "Delivered", Color: "#A855F7", Index: 3},
+		{Name: "Canceled", Color: "#EF4444", Index: 4},
+	}
+
+	log.Printf("[Q18] Creating %d default labels for project ID: %d", len(defaultLabels), projectID)
+	for _, l := range defaultLabels {
+		label := Label{
+			ProjectID: projectID,
+			Name:      l.Name,
+			Color:     l.Color,
+		}
+		log.Printf("[Q18] Creating label: %s for project %d", l.Name, projectID)
+		if err := s.labelRepo.Create(&label); err != nil {
+			log.Printf("[Q18] ERROR creating label '%s': %v", l.Name, err)
+			return err
+		}
+		log.Printf("[Q18] Successfully created label: %s (ID: %d)", l.Name, label.ID)
 	}
 	return nil
 }
