@@ -108,7 +108,7 @@ open http://localhost:8080/swagger/index.html
    → User langsung login otomatis
 
 2. User buat project
-   → Sistem auto-generate 5 label: Todo, On Going, Done, Delivered, Canceled
+   → Sistem auto-generate 3 urgency label: Urgent, Normal, Low
    → Sistem auto-generate project status: Active
    → Project siap dipakai
 

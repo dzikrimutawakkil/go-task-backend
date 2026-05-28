@@ -228,35 +228,33 @@ func (s *taskService) CreateDefaultStatuses(projectID uint) error {
 	return nil
 }
 
-// CreateDefaultLabels creates 5 default labels for a project.
-// Q18: Auto-generate default labels saat project dibuat
+// CreateDefaultLabels creates 3 default urgency labels for a project.
+// N6: Label → Urgency Level (Urgent, Normal, Low)
 func (s *taskService) CreateDefaultLabels(projectID uint) error {
-	// 5 labels per spec: Todo, On Going, Done, Delivered, Canceled
+	// 3 urgency labels per spec: Urgent, Normal, Low
 	defaultLabels := []struct {
 		Name  string
 		Color string
 		Index int
 	}{
-		{Name: "Todo", Color: "#E2E8F0", Index: 0},
-		{Name: "On Going", Color: "#3B82F6", Index: 1},
-		{Name: "Done", Color: "#22C55E", Index: 2},
-		{Name: "Delivered", Color: "#A855F7", Index: 3},
-		{Name: "Canceled", Color: "#EF4444", Index: 4},
+		{Name: "Urgent", Color: "#EF4444", Index: 0}, // Red - high priority
+		{Name: "Normal", Color: "#F59E0B", Index: 1}, // Yellow - standard
+		{Name: "Low", Color: "#22C55E", Index: 2},    // Green - can wait
 	}
 
-	log.Printf("[Q18] Creating %d default labels for project ID: %d", len(defaultLabels), projectID)
+	log.Printf("[N6] Creating %d default urgency labels for project ID: %d", len(defaultLabels), projectID)
 	for _, l := range defaultLabels {
 		label := Label{
 			ProjectID: projectID,
 			Name:      l.Name,
 			Color:     l.Color,
 		}
-		log.Printf("[Q18] Creating label: %s for project %d", l.Name, projectID)
+		log.Printf("[N6] Creating urgency label: %s for project %d", l.Name, projectID)
 		if err := s.labelRepo.Create(&label); err != nil {
-			log.Printf("[Q18] ERROR creating label '%s': %v", l.Name, err)
+			log.Printf("[N6] ERROR creating label '%s': %v", l.Name, err)
 			return err
 		}
-		log.Printf("[Q18] Successfully created label: %s (ID: %d)", l.Name, label.ID)
+		log.Printf("[N6] Successfully created urgency label: %s (ID: %d)", l.Name, label.ID)
 	}
 	return nil
 }

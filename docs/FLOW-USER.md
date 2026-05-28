@@ -59,14 +59,14 @@ User daftar → Dapat Workspace + Free Plan → Buat Project → Buat Task → K
 
 ### Yang dilakukan SISTEM:
 1. Buat record project baru
-2. Auto-generate 5 label: Todo, On Going, Done, Delivered, Canceled
+2. Auto-generate 3 urgency label: Urgent, Normal, Low
 3. Auto-generate 5 status task: Todo, On Progress, Done, Pending, Cancel
 4. Set project status: Active
-5. Set task default status: Todo (label pertama)
+5. Set task default status: Todo (status pertama)
 
 ### Hasil:
 - Project muncul di dashboard
-- Langsung punya 5 label dan 5 status siap pakai
+- Langsung punya 3 urgency label dan 5 status siap pakai
 
 ---
 
@@ -90,16 +90,15 @@ User daftar → Dapat Workspace + Free Plan → Buat Project → Buat Task → K
 
 ---
 
-## 🔄 Alur #5: Pindahkan Task
+## 🔄 Alur #5: Ubah Urgency Task
 
 ### Yang dilakukan USER:
-1. Klik task → Ubah status/label (drag & drop atau edit)
-2. Pilih label baru: Todo → On Going → Done → Delivered → Canceled
+1. Klik task → Ubah urgency (ubah label)
+2. Pilih urgency baru: Low → Normal → Urgent
 
 ### Yang dilakukan SISTEM:
-1. Update task status
-2. Reorder index task di kolom
-3. Jika perlu, shift index task lain
+1. Update task label (urgency)
+2. Tampilkan visual indicator urgency
 
 ### Hasil:
 - Task berpindah kolom
