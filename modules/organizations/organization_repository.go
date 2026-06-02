@@ -1,6 +1,7 @@
 package organizations
 
 import (
+	"gotask-backend/internal/interfaces"
 	"gotask-backend/models"
 	"strconv"
 
@@ -20,6 +21,12 @@ type OrganizationRepository interface {
 	RemoveMember(orgID uint, userID uint) error
 	GetMemberRoleByOrgID(userID uint, orgID string) (models.Role, error)
 	FindOrganizationsByUserID(userID uint) ([]Organization, error)
+	// M5: Quota helpers
+	CountByOwner(ownerID uint) (int, error)
+	CountMembers(orgID uint) (int, error)
+
+	// M5: Implements interfaces.OrgFinder for quota checks
+	FindOrgInfoByID(id uint) (*interfaces.OrgInfo, error)
 }
 
 type organizationRepository struct {
@@ -132,4 +139,36 @@ func (r *organizationRepository) FindOrganizationsByUserID(userID uint) ([]Organ
 		Find(&orgs).Error
 
 	return orgs, err
+}
+
+// CountByOwner returns the number of organizations owned by a specific user.
+// M5: Subscription Tiers — Phase 5: Service Layer — Quota check for workspace limit.
+func (r *organizationRepository) CountByOwner(ownerID uint) (int, error) {
+	var count int64
+	err := r.db.Model(&Organization{}).Where("owner_id = ?", ownerID).Count(&count).Error
+	return int(count), err
+}
+
+// CountMembers returns the number of members in an organization.
+// M5: Subscription Tiers — Phase 5: Service Layer — Quota check for member limit.
+func (r *organizationRepository) CountMembers(orgID uint) (int, error) {
+	var count int64
+	err := r.db.Table("organization_users").
+		Where("organization_id = ?", orgID).
+		Count(&count).Error
+	return int(count), err
+}
+
+// FindOrgInfoByID implements interfaces.OrgFinder for quota checks.
+// M5: Subscription Tiers — Phase 5: Service Layer — Returns minimal org info for quota checks.
+func (r *organizationRepository) FindOrgInfoByID(id uint) (*interfaces.OrgInfo, error) {
+	var org Organization
+	err := r.db.Select("id, owner_id").First(&org, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &interfaces.OrgInfo{
+		ID:      org.ID,
+		OwnerID: org.OwnerID,
+	}, nil
 }

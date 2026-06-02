@@ -15,6 +15,82 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/admin/users/{id}/tier": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Activate a subscription tier for a user. Requires admin role.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tiers"
+                ],
+                "summary": "Activate tier for user (Admin only)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Tier activation payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/organizations.ActivateTierRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Tier activated successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/organizations.ActivateTierResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permission",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/auth/me": {
             "get": {
                 "security": [
@@ -42,144 +118,6 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/licenses": {
-            "post": {
-                "description": "Bulk creates license keys. Requires x-admin-secret header.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Licenses"
-                ],
-                "summary": "Create license keys (admin only)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Admin secret key",
-                        "name": "x-admin-secret",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "License keys to create",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/licenses.CreateLicenseRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Licenses created",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Invalid admin secret",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/licenses/activate": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Activates a license key for the authenticated user.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Licenses"
-                ],
-                "summary": "Activate a license key",
-                "parameters": [
-                    {
-                        "description": "License key",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/licenses.ActivateLicenseRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "License activated",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid or already used key",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/licenses/validate": {
-            "post": {
-                "description": "Checks if a license key is valid without requiring authentication.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Licenses"
-                ],
-                "summary": "Validate a license key",
-                "parameters": [
-                    {
-                        "description": "License key to validate",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/licenses.ValidateLicenseRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Validation result",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid key format",
                         "schema": {
                             "$ref": "#/definitions/utils.APIResponse"
                         }
@@ -2827,6 +2765,101 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/tier/plans": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve all active subscription tier plans with their limits and features. Public endpoint for pricing page.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tiers"
+                ],
+                "summary": "Get all tier plans",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/organizations.TierPlanWithLimits"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to fetch tier plans",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/me/tier": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get the authenticated user's tier information including usage statistics.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tiers"
+                ],
+                "summary": "Get my tier info",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/organizations.TierInfoResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to fetch tier info",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -3162,55 +3195,6 @@ const docTemplate = `{
                 }
             }
         },
-        "licenses.ActivateLicenseRequest": {
-            "type": "object",
-            "required": [
-                "key"
-            ],
-            "properties": {
-                "key": {
-                    "type": "string",
-                    "example": "ABCD-1234-EFGH-5678"
-                }
-            }
-        },
-        "licenses.CreateLicenseRequest": {
-            "type": "object",
-            "required": [
-                "keys"
-            ],
-            "properties": {
-                "keys": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/licenses.LicenseInput"
-                    }
-                }
-            }
-        },
-        "licenses.LicenseInput": {
-            "type": "object",
-            "properties": {
-                "key": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "licenses.ValidateLicenseRequest": {
-            "type": "object",
-            "required": [
-                "key"
-            ],
-            "properties": {
-                "key": {
-                    "type": "string",
-                    "example": "ABCD-1234-EFGH-5678"
-                }
-            }
-        },
         "organizations.AcceptInvitationRequest": {
             "description": "Request body for accepting an organization invitation",
             "type": "object",
@@ -3221,6 +3205,49 @@ const docTemplate = `{
                 "token": {
                     "type": "string",
                     "example": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            }
+        },
+        "organizations.ActivateTierRequest": {
+            "description": "Request body for activating a tier for a user",
+            "type": "object",
+            "required": [
+                "duration_months",
+                "tier"
+            ],
+            "properties": {
+                "duration_months": {
+                    "type": "integer",
+                    "maximum": 24,
+                    "minimum": 1,
+                    "example": 12
+                },
+                "tier": {
+                    "type": "string",
+                    "example": "pro"
+                }
+            }
+        },
+        "organizations.ActivateTierResult": {
+            "type": "object",
+            "properties": {
+                "affected_organizations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "tier": {
+                    "type": "string"
+                },
+                "tier_activated_at": {
+                    "type": "string"
+                },
+                "tier_expires_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
                 }
             }
         },
@@ -3237,6 +3264,20 @@ const docTemplate = `{
                 }
             }
         },
+        "organizations.Features": {
+            "type": "object",
+            "properties": {
+                "audit_log": {
+                    "type": "boolean"
+                },
+                "comments": {
+                    "type": "boolean"
+                },
+                "realtime": {
+                    "type": "boolean"
+                }
+            }
+        },
         "organizations.InviteMemberRequest": {
             "description": "Request body for inviting a member to organization",
             "type": "object",
@@ -3247,6 +3288,29 @@ const docTemplate = `{
                 "email": {
                     "type": "string",
                     "example": "member@example.com"
+                }
+            }
+        },
+        "organizations.LimitsInfo": {
+            "type": "object",
+            "properties": {
+                "max_clients": {
+                    "type": "integer"
+                },
+                "max_invoices_per_month": {
+                    "type": "integer"
+                },
+                "max_members_per_workspace": {
+                    "type": "integer"
+                },
+                "max_projects_per_workspace": {
+                    "type": "integer"
+                },
+                "max_tasks_per_project": {
+                    "type": "integer"
+                },
+                "max_workspaces": {
+                    "type": "integer"
                 }
             }
         },
@@ -3319,6 +3383,102 @@ const docTemplate = `{
                 }
             }
         },
+        "organizations.TierInfoResponse": {
+            "type": "object",
+            "properties": {
+                "activated_at": {
+                    "type": "string"
+                },
+                "days_remaining": {
+                    "type": "integer"
+                },
+                "effective_tier": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "features": {
+                    "$ref": "#/definitions/organizations.Features"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "limits": {
+                    "$ref": "#/definitions/organizations.LimitsInfo"
+                },
+                "tier": {
+                    "type": "string"
+                },
+                "usage": {
+                    "$ref": "#/definitions/organizations.UsageInfo"
+                }
+            }
+        },
+        "organizations.TierLimit": {
+            "type": "object",
+            "properties": {
+                "can_audit_log": {
+                    "type": "boolean"
+                },
+                "can_comment": {
+                    "type": "boolean"
+                },
+                "can_sse": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "max_clients": {
+                    "type": "integer"
+                },
+                "max_invoices_per_month": {
+                    "type": "integer"
+                },
+                "max_members": {
+                    "type": "integer"
+                },
+                "max_projects": {
+                    "type": "integer"
+                },
+                "max_tasks_per_project": {
+                    "type": "integer"
+                },
+                "max_workspaces": {
+                    "type": "integer"
+                },
+                "tier": {
+                    "type": "string"
+                }
+            }
+        },
+        "organizations.TierPlanWithLimits": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "features": {
+                    "$ref": "#/definitions/organizations.Features"
+                },
+                "limits": {
+                    "$ref": "#/definitions/organizations.TierLimit"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "price_monthly": {
+                    "type": "integer"
+                },
+                "price_yearly": {
+                    "type": "integer"
+                },
+                "tier": {
+                    "type": "string"
+                }
+            }
+        },
         "organizations.UpdateMemberRoleRequest": {
             "description": "Request body for updating member role",
             "type": "object",
@@ -3329,6 +3489,26 @@ const docTemplate = `{
                 "role": {
                     "type": "string",
                     "example": "admin"
+                }
+            }
+        },
+        "organizations.UsageInfo": {
+            "type": "object",
+            "properties": {
+                "clients": {
+                    "type": "integer"
+                },
+                "invoices_this_month": {
+                    "type": "integer"
+                },
+                "members": {
+                    "type": "integer"
+                },
+                "owned_workspaces": {
+                    "type": "integer"
+                },
+                "projects": {
+                    "type": "integer"
                 }
             }
         },
@@ -3695,30 +3875,33 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "data": {},
-                "license_warning": {
-                    "$ref": "#/definitions/utils.LicenseWarning"
-                },
                 "message": {
                     "type": "string"
                 },
                 "success": {
                     "type": "boolean"
+                },
+                "tier_info": {
+                    "$ref": "#/definitions/utils.TierInfo"
                 }
             }
         },
-        "utils.LicenseWarning": {
+        "utils.TierInfo": {
             "type": "object",
             "properties": {
                 "days_remaining": {
                     "type": "integer"
                 },
-                "expired": {
-                    "type": "boolean"
-                },
-                "expired_at": {
+                "expires_at": {
                     "type": "string"
                 },
-                "message": {
+                "is_active": {
+                    "type": "boolean"
+                },
+                "tier": {
+                    "type": "string"
+                },
+                "warning": {
                     "type": "string"
                 }
             }

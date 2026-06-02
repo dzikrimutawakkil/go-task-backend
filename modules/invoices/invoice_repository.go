@@ -25,6 +25,9 @@ type InvoiceRepository interface {
 	Delete(invoice *Invoice) error
 	// Transactional operations
 	MarkAsPaidAndSyncRevenue(invoiceID uint, clientID uint, amountPaid float64, paidAt *string) (*Invoice, error)
+
+	// M5: Quota check helpers
+	CountThisMonth(orgID string) (int, error)
 }
 
 type invoiceRepository struct {
@@ -121,4 +124,17 @@ func (r *invoiceRepository) MarkAsPaidAndSyncRevenue(invoiceID uint, clientID ui
 	})
 
 	return &invoice, err
+}
+
+// CountThisMonth returns the number of invoices created this month for an organization.
+// M5: Subscription Tiers — Phase 5: Service Layer — Quota check for invoice limit.
+func (r *invoiceRepository) CountThisMonth(orgID string) (int, error) {
+	now := time.Now()
+	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+
+	var count int64
+	err := r.db.Model(&Invoice{}).
+		Where("organization_id = ? AND created_at >= ?", orgID, monthStart).
+		Count(&count).Error
+	return int(count), err
 }

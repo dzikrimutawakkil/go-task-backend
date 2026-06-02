@@ -10,6 +10,112 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GetTierPlans godoc
+// @Summary     Get all tier plans
+// @Description Retrieve all active subscription tier plans with their limits and features. Public endpoint for pricing page.
+// @Tags        Tiers
+// @Produce     json
+// @Security    BearerAuth
+// @Success     200 {object} utils.APIResponse{data=[]TierPlanWithLimits} "Success"
+// @Failure     500 {object} utils.APIResponse "Failed to fetch tier plans"
+// @Router      /tier/plans [get]
+func (h *Handler) GetTierPlans(c *gin.Context) {
+	plans, err := h.service.GetTierPlans()
+	if err != nil {
+		utils.SendError(c, http.StatusInternalServerError, "Failed to fetch tier plans")
+		return
+	}
+	utils.SendSuccess(c, "OK", plans)
+}
+
+// GetMyTierInfo godoc
+// @Summary     Get my tier info
+// @Description Get the authenticated user's tier information including usage statistics.
+// @Tags        Tiers
+// @Produce     json
+// @Security    BearerAuth
+// @Success     200 {object} utils.APIResponse{data=TierInfoResponse} "Success"
+// @Failure     401 {object} utils.APIResponse "Unauthorized"
+// @Failure     500 {object} utils.APIResponse "Failed to fetch tier info"
+// @Router      /users/me/tier [get]
+func (h *Handler) GetMyTierInfo(c *gin.Context) {
+	user := c.MustGet("user").(models.MinimalUser)
+
+	info, err := h.service.GetTierInfoForModels(user.ID)
+	if err != nil {
+		utils.SendError(c, http.StatusInternalServerError, "Failed to fetch tier info")
+		return
+	}
+	utils.SendSuccess(c, "OK", info)
+}
+
+// ActivateTierRequest represents the request body for activating a tier.
+// @Description Request body for activating a tier for a user
+type ActivateTierRequest struct {
+	Tier           string `json:"tier" binding:"required" example:"pro"`
+	DurationMonths int    `json:"duration_months" binding:"required,min=1,max=24" example:"12"`
+}
+
+// ActivateTier godoc
+// @Summary     Activate tier for user (Admin only)
+// @Description Activate a subscription tier for a user. Requires admin role.
+// @Tags        Tiers
+// @Accept      json
+// @Produce     json
+// @Param       id path int true "User ID"
+// @Param       body body ActivateTierRequest true "Tier activation payload"
+// @Security    BearerAuth
+// @Success     200 {object} utils.APIResponse{data=ActivateTierResult} "Tier activated successfully"
+// @Failure     400 {object} utils.APIResponse "Invalid request"
+// @Failure     403 {object} utils.APIResponse "Insufficient permission"
+// @Failure     404 {object} utils.APIResponse "User not found"
+// @Router      /admin/users/{id}/tier [patch]
+func (h *Handler) ActivateTier(c *gin.Context) {
+	// Check if requester is admin (you can add admin check here based on your auth system)
+	// For now, we'll assume the route is protected by admin middleware in main.go
+
+	userIDStr := c.Param("id")
+	userID64, err := strconv.ParseUint(userIDStr, 10, 64)
+	if err != nil {
+		utils.SendError(c, http.StatusBadRequest, "Invalid user ID format")
+		return
+	}
+	userID := uint(userID64)
+
+	var req ActivateTierRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.SendError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// Validate tier value
+	validTiers := map[string]bool{"free": true, "pro": true, "ultimate": true}
+	if !validTiers[req.Tier] {
+		utils.SendError(c, http.StatusBadRequest, "Invalid tier. Must be: free, pro, or ultimate")
+		return
+	}
+
+	// Validate duration
+	if req.DurationMonths < 1 || req.DurationMonths > 24 {
+		utils.SendError(c, http.StatusBadRequest, "duration_months must be between 1 and 24")
+		return
+	}
+
+	requester := c.MustGet("user").(models.MinimalUser)
+
+	result, err := h.service.ActivateForModelsTier(userID, req.Tier, req.DurationMonths, requester.ID)
+	if err != nil {
+		if err.Error() == "user not found" {
+			utils.SendError(c, http.StatusNotFound, "User not found")
+			return
+		}
+		utils.SendError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	utils.SendSuccess(c, "Tier activated successfully", result)
+}
+
 // GetUserOrganizations godoc
 // @Summary     Get user organizations
 // @Description Retrieve a list of all organizations the authenticated user belongs to.
@@ -85,6 +191,10 @@ func (h *Handler) CreateOrganization(c *gin.Context) {
 
 	org, err := h.service.CreateOrganization(req.Name, user.ID)
 	if err != nil {
+		if quotaErr, ok := err.(*utils.QuotaError); ok {
+			utils.SendError(c, http.StatusForbidden, quotaErr.Error())
+			return
+		}
 		utils.SendError(c, http.StatusInternalServerError, "Failed to create organization")
 		return
 	}
@@ -133,6 +243,10 @@ func (h *Handler) InviteMember(c *gin.Context) {
 	if err != nil {
 		if isPermissionError(err) {
 			utils.SendError(c, http.StatusForbidden, "Insufficient permission")
+			return
+		}
+		if quotaErr, ok := err.(*utils.QuotaError); ok {
+			utils.SendError(c, http.StatusForbidden, quotaErr.Error())
 			return
 		}
 		utils.SendError(c, http.StatusBadRequest, err.Error())

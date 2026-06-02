@@ -305,6 +305,10 @@ func (h *Handler) CreateTask(c *gin.Context) {
 
 	task, err := h.service.CreateTask(input)
 	if err != nil {
+		if quotaErr, ok := err.(*utils.QuotaError); ok {
+			utils.SendError(c, http.StatusForbidden, quotaErr.Error())
+			return
+		}
 		utils.SendError(c, http.StatusInternalServerError, "Failed to create task")
 		return
 	}

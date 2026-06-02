@@ -94,6 +94,10 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 
 	project, err := h.service.CreateProject(input, user.ID)
 	if err != nil {
+		if quotaErr, ok := err.(*utils.QuotaError); ok {
+			utils.SendError(c, http.StatusForbidden, quotaErr.Error())
+			return
+		}
 		utils.SendError(c, http.StatusInternalServerError, "Failed to create project")
 		return
 	}

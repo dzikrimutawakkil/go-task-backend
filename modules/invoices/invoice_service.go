@@ -7,7 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"gotask-backend/internal/interfaces"
 	"gotask-backend/modules/clients"
+	"gotask-backend/utils"
 )
 
 type InvoiceService interface {
@@ -23,10 +25,13 @@ type InvoiceService interface {
 type invoiceService struct {
 	repo       InvoiceRepository
 	clientRepo clients.ClientRepository
+	orgRepo    interfaces.OrgFinder
+	authS      interfaces.AuthService
 }
 
-func NewInvoiceService(repo InvoiceRepository, clientRepo clients.ClientRepository) InvoiceService {
-	return &invoiceService{repo: repo, clientRepo: clientRepo}
+// M5: Subscription Tiers — added orgRepo and authS for quota checks.
+func NewInvoiceService(repo InvoiceRepository, clientRepo clients.ClientRepository, orgRepo interfaces.OrgFinder, authS interfaces.AuthService) InvoiceService {
+	return &invoiceService{repo: repo, clientRepo: clientRepo, orgRepo: orgRepo, authS: authS}
 }
 
 func (s *invoiceService) GetInvoices(orgID string) ([]Invoice, error) {
@@ -52,6 +57,27 @@ func (s *invoiceService) GenerateInvoiceNumber() string {
 }
 
 func (s *invoiceService) CreateInvoice(input CreateInvoiceInput) (*Invoice, error) {
+	// M5: Quota check — check invoice limit based on org owner's tier
+	effectiveTier := "free"
+	limits := utils.GetTierLimits("free")
+
+	if orgInfo, err := s.orgRepo.FindOrgInfoByID(input.OrganizationID); err == nil {
+		if owner, err := s.authS.FindByID(orgInfo.OwnerID); err == nil {
+			effectiveTier = utils.GetEffectiveTier(owner.Tier, owner.TierExpiresAt)
+			limits = utils.GetTierLimits(effectiveTier)
+		}
+	}
+
+	if limits.MaxInvoicesPerMonth != -1 {
+		count, err := s.repo.CountThisMonth(fmt.Sprintf("%d", input.OrganizationID))
+		if err != nil {
+			return nil, err
+		}
+		if count >= limits.MaxInvoicesPerMonth {
+			return nil, utils.ErrQuotaExceeded("invoice", limits.MaxInvoicesPerMonth, effectiveTier)
+		}
+	}
+
 	// Generate unique invoice number
 	invoiceNumber := s.GenerateInvoiceNumber()
 	for {

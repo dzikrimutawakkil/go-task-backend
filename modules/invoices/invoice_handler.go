@@ -171,6 +171,10 @@ func (h *Handler) CreateInvoice(c *gin.Context) {
 
 	invoice, err := h.service.CreateInvoice(input)
 	if err != nil {
+		if quotaErr, ok := err.(*utils.QuotaError); ok {
+			utils.SendError(c, http.StatusForbidden, quotaErr.Error())
+			return
+		}
 		utils.SendError(c, http.StatusInternalServerError, "Failed to create invoice")
 		return
 	}

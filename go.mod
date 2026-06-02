@@ -8,6 +8,9 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
+	github.com/swaggo/files v1.0.1
+	github.com/swaggo/gin-swagger v1.6.1
+	github.com/swaggo/swag v1.16.6
 	golang.org/x/crypto v0.46.0
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.31.1
@@ -24,9 +27,6 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/lib/pq v1.10.9 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
-	github.com/swaggo/files v1.0.1 // indirect
-	github.com/swaggo/gin-swagger v1.6.1 // indirect
-	github.com/swaggo/swag v1.16.6 // indirect
 	golang.org/x/mod v0.30.0 // indirect
 	golang.org/x/tools v0.39.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

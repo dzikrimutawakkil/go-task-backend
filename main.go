@@ -9,7 +9,6 @@ import (
 	"gotask-backend/modules/auth"
 	"gotask-backend/modules/clients"
 	"gotask-backend/modules/invoices"
-	"gotask-backend/modules/licenses"
 	"gotask-backend/modules/organizations"
 	"gotask-backend/modules/projects"
 	"gotask-backend/modules/tasks"
@@ -78,46 +77,46 @@ func main() {
 	authService := auth.NewAuthService(authRepo, orgRepo)
 	authHandler := auth.NewAuthHandler(authService)
 
+	// Dependency Injection for Tier Plans (needed by orgService)
+	tierPlanRepo := organizations.NewTierPlanRepository(config.DB)
+
 	// Dependency Injection for Organization
 	invitationRepo := organizations.NewInvitationRepository(config.DB)
-	orgService := organizations.NewOrganizationService(orgRepo, authService)
+	orgService := organizations.NewOrganizationService(orgRepo, authService, tierPlanRepo)
 	invitationService := organizations.NewInvitationService(invitationRepo, orgRepo, authService)
 	orgHandler := organizations.NewOrganizationHandler(orgService)
 	invitationHandler := organizations.NewInvitationHandler(invitationService, orgRepo)
 
-	// Dependency Injection for Tasks
+	// Dependency Injection for Tasks (M5: added orgRepo for quota checks)
 	taskRepo := tasks.NewTaskRepository(config.DB)
 	labelRepo := tasks.NewLabelRepository(config.DB)
-	taskService := tasks.NewTaskService(taskRepo, authService, labelRepo)
+	taskService := tasks.NewTaskService(taskRepo, authService, labelRepo, orgRepo)
 	taskHandler := tasks.NewTaskHandler(taskService)
 	labelHandler := tasks.NewLabelHandler(tasks.NewLabelService(labelRepo))
 
-	// Dependency Injection for Projects
+	// Dependency Injection for Projects (M5: added authService for quota checks)
 	projectRepo := projects.NewProjectRepository(config.DB)
-	projectService := projects.NewProjectService(projectRepo, taskService, orgRepo)
+	projectService := projects.NewProjectService(projectRepo, taskService, orgRepo, authService)
 	projectHandler := projects.NewProjectHandler(projectService)
 
-	// Dependency Injection for Clients
+	// Dependency Injection for Clients (M5: added orgRepo and authService for quota checks)
 	clientRepo := clients.NewClientRepository(config.DB)
-	clientService := clients.NewClientService(clientRepo)
+	clientService := clients.NewClientService(clientRepo, orgRepo, authService)
 	clientHandler := clients.NewClientHandler(clientService)
 
-	// Dependency Injection for Invoices
+	// Dependency Injection for Invoices (M5: added orgRepo and authService for quota checks)
 	invoiceRepo := invoices.NewInvoiceRepository(config.DB)
-	invoiceService := invoices.NewInvoiceService(invoiceRepo, clientRepo)
+	invoiceService := invoices.NewInvoiceService(invoiceRepo, clientRepo, orgRepo, authService)
 	invoiceHandler := invoices.NewInvoiceHandler(invoiceService)
 
-	// Dependency Injection for Licenses
-	licenseRepo := licenses.NewLicenseRepository(config.DB)
-	licenseService := licenses.NewLicenseService(licenseRepo)
-	licenseHandler := licenses.NewLicenseHandler(licenseService)
+	// Dependency Injection for Organizations (with TierPlan repo for quota checks)
 
 	// PUBLIC ROUTES
 	r.POST("/signup", authHandler.Signup)
 	r.POST("/login", authHandler.Login)
 	r.POST("/forgot-password", authHandler.ForgotPassword)
 	r.POST("/reset-password", authHandler.ResetPassword)
-	r.POST("/api/licenses/validate", licenseHandler.ValidateLicense)
+	r.GET("/tier/plans", orgHandler.GetTierPlans) // Public: pricing page
 
 	// PROTECTED ROUTES
 	// Q12: Rate limiting — per IP for unauthenticated, per user for authenticated
@@ -183,8 +182,9 @@ func main() {
 		protected.DELETE("/invoices/:id", invoiceHandler.DeleteInvoice)
 		protected.PATCH("/invoices/:id/mark-paid", invoiceHandler.MarkPaid)
 
-		protected.POST("/api/licenses/activate", licenseHandler.ActivateLicense)
-		protected.POST("/api/licenses", licenseHandler.CreateLicenses)
+		// M5: Subscription Tiers
+		protected.GET("/users/me/tier", orgHandler.GetMyTierInfo)
+		protected.PATCH("/admin/users/:id/tier", orgHandler.ActivateTier)
 	}
 
 	// Public invitation endpoints (accept doesn't require org context)

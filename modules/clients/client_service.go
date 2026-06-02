@@ -1,5 +1,11 @@
 package clients
 
+import (
+	"gotask-backend/internal/interfaces"
+	"gotask-backend/utils"
+	"strconv"
+)
+
 type ClientService interface {
 	GetClients(orgID string) ([]Client, error)
 	GetClient(id uint) (*Client, error)
@@ -11,11 +17,14 @@ type ClientService interface {
 }
 
 type clientService struct {
-	repo ClientRepository
+	repo    ClientRepository
+	orgRepo interfaces.OrgFinder
+	authS   interfaces.AuthService
 }
 
-func NewClientService(repo ClientRepository) ClientService {
-	return &clientService{repo: repo}
+// M5: Subscription Tiers — added orgRepo and authS for quota checks.
+func NewClientService(repo ClientRepository, orgRepo interfaces.OrgFinder, authS interfaces.AuthService) ClientService {
+	return &clientService{repo: repo, orgRepo: orgRepo, authS: authS}
 }
 
 func (s *clientService) GetClients(orgID string) ([]Client, error) {
@@ -27,6 +36,27 @@ func (s *clientService) GetClient(id uint) (*Client, error) {
 }
 
 func (s *clientService) CreateClient(input CreateClientInput) (*Client, error) {
+	// M5: Quota check — check client limit based on org owner's tier
+	effectiveTier := "free"
+	limits := utils.GetTierLimits("free")
+
+	if orgInfo, err := s.orgRepo.FindOrgInfoByID(input.OrganizationID); err == nil {
+		if owner, err := s.authS.FindByID(orgInfo.OwnerID); err == nil {
+			effectiveTier = utils.GetEffectiveTier(owner.Tier, owner.TierExpiresAt)
+			limits = utils.GetTierLimits(effectiveTier)
+		}
+	}
+
+	if limits.MaxClients != -1 {
+		count, err := s.repo.CountByOrg(strconv.FormatUint(uint64(input.OrganizationID), 10))
+		if err != nil {
+			return nil, err
+		}
+		if int(count) >= limits.MaxClients {
+			return nil, utils.ErrQuotaExceeded("client", limits.MaxClients, effectiveTier)
+		}
+	}
+
 	client := Client{
 		OrganizationID: input.OrganizationID,
 		Name:           input.Name,

@@ -9,21 +9,24 @@ import (
 
 // TestSendEmail tests the email sending functionality.
 // This test is skipped by default. Run with:
-//   go test ./utils/... -v -run TestSendEmail
+//
+//	go test ./utils/... -v -run TestSendEmail
 //
 // To run this test, you need SMTP configured in your .env file:
-//   SMTP_HOST=smtp.gmail.com
-//   SMTP_PORT=587
-//   SMTP_USER=your-email@gmail.com
-//   SMTP_PASSWORD=your-app-password
-//   SMTP_FROM=your-email@gmail.com
+//
+//	SMTP_HOST=smtp.gmail.com
+//	SMTP_PORT=587
+//	SMTP_USER=your-email@gmail.com
+//	SMTP_PASSWORD=your-app-password
+//	SMTP_FROM=your-email@gmail.com
 //
 // Usage:
-//   # Run with default recipient (test@example.com)
-//   go test ./utils/... -v -run TestSendEmail
 //
-//   # Run with custom recipient
-//   TEST_EMAIL_RECIPIENT=mutawakkilalhamdika@gmail.com go test ./utils/... -v -run TestSendEmail
+//	# Run with default recipient (test@example.com)
+//	go test ./utils/... -v -run TestSendEmail
+//
+//	# Run with custom recipient
+//	TEST_EMAIL_RECIPIENT=mutawakkilalhamdika@gmail.com go test ./utils/... -v -run TestSendEmail
 func TestSendEmail(t *testing.T) {
 	// Load .env for testing
 	_ = godotenv.Load()

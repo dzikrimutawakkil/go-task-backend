@@ -30,6 +30,10 @@ type TaskRepository interface {
 	DeleteStatus(status *Status) error
 	BulkUpdateStatuses(statuses []Status) error
 	GetMaxIndex(projectID string) (int, error)
+
+	// M5: Quota check helpers
+	CountByProject(projectID string) (int, error)
+	GetProjectOrgID(projectID string) (uint, error)
 }
 
 // TaskFilters holds the filter parameters for searching tasks.
@@ -243,6 +247,27 @@ func (r *repository) GetMaxIndex(projectID string) (int, error) {
 	}
 
 	return status.Index, nil
+}
+
+// CountByProject returns the number of tasks in a project.
+// M5: Subscription Tiers — Phase 5: Service Layer — Quota check for task limit.
+func (r *repository) CountByProject(projectID string) (int, error) {
+	var count int64
+	err := r.db.Model(&Task{}).Where("project_id = ?", projectID).Count(&count).Error
+	return int(count), err
+}
+
+// GetProjectOrgID returns the organization ID for a given project.
+// M5: Subscription Tiers — Phase 5: Service Layer — Used for quota check.
+func (r *repository) GetProjectOrgID(projectID string) (uint, error) {
+	var result struct {
+		OrgID uint
+	}
+	err := r.db.Table("projects").
+		Select("organization_id").
+		Where("id = ?", projectID).
+		Scan(&result).Error
+	return result.OrgID, err
 }
 
 // SearchTasks implements full-text search and filtering for tasks.

@@ -237,38 +237,6 @@ definitions:
       title:
         type: string
     type: object
-  licenses.ActivateLicenseRequest:
-    properties:
-      key:
-        example: ABCD-1234-EFGH-5678
-        type: string
-    required:
-    - key
-    type: object
-  licenses.CreateLicenseRequest:
-    properties:
-      keys:
-        items:
-          $ref: '#/definitions/licenses.LicenseInput'
-        type: array
-    required:
-    - keys
-    type: object
-  licenses.LicenseInput:
-    properties:
-      key:
-        type: string
-      type:
-        type: string
-    type: object
-  licenses.ValidateLicenseRequest:
-    properties:
-      key:
-        example: ABCD-1234-EFGH-5678
-        type: string
-    required:
-    - key
-    type: object
   organizations.AcceptInvitationRequest:
     description: Request body for accepting an organization invitation
     properties:
@@ -277,6 +245,36 @@ definitions:
         type: string
     required:
     - token
+    type: object
+  organizations.ActivateTierRequest:
+    description: Request body for activating a tier for a user
+    properties:
+      duration_months:
+        example: 12
+        maximum: 24
+        minimum: 1
+        type: integer
+      tier:
+        example: pro
+        type: string
+    required:
+    - duration_months
+    - tier
+    type: object
+  organizations.ActivateTierResult:
+    properties:
+      affected_organizations:
+        items:
+          type: string
+        type: array
+      tier:
+        type: string
+      tier_activated_at:
+        type: string
+      tier_expires_at:
+        type: string
+      user_id:
+        type: integer
     type: object
   organizations.CreateOrgRequest:
     description: Request body for organization creation
@@ -287,6 +285,15 @@ definitions:
     required:
     - name
     type: object
+  organizations.Features:
+    properties:
+      audit_log:
+        type: boolean
+      comments:
+        type: boolean
+      realtime:
+        type: boolean
+    type: object
   organizations.InviteMemberRequest:
     description: Request body for inviting a member to organization
     properties:
@@ -295,6 +302,21 @@ definitions:
         type: string
     required:
     - email
+    type: object
+  organizations.LimitsInfo:
+    properties:
+      max_clients:
+        type: integer
+      max_invoices_per_month:
+        type: integer
+      max_members_per_workspace:
+        type: integer
+      max_projects_per_workspace:
+        type: integer
+      max_tasks_per_project:
+        type: integer
+      max_workspaces:
+        type: integer
     type: object
   organizations.Organization:
     properties:
@@ -342,6 +364,69 @@ definitions:
     required:
     - invitation_id
     type: object
+  organizations.TierInfoResponse:
+    properties:
+      activated_at:
+        type: string
+      days_remaining:
+        type: integer
+      effective_tier:
+        type: string
+      expires_at:
+        type: string
+      features:
+        $ref: '#/definitions/organizations.Features'
+      is_active:
+        type: boolean
+      limits:
+        $ref: '#/definitions/organizations.LimitsInfo'
+      tier:
+        type: string
+      usage:
+        $ref: '#/definitions/organizations.UsageInfo'
+    type: object
+  organizations.TierLimit:
+    properties:
+      can_audit_log:
+        type: boolean
+      can_comment:
+        type: boolean
+      can_sse:
+        type: boolean
+      id:
+        type: integer
+      max_clients:
+        type: integer
+      max_invoices_per_month:
+        type: integer
+      max_members:
+        type: integer
+      max_projects:
+        type: integer
+      max_tasks_per_project:
+        type: integer
+      max_workspaces:
+        type: integer
+      tier:
+        type: string
+    type: object
+  organizations.TierPlanWithLimits:
+    properties:
+      description:
+        type: string
+      features:
+        $ref: '#/definitions/organizations.Features'
+      limits:
+        $ref: '#/definitions/organizations.TierLimit'
+      name:
+        type: string
+      price_monthly:
+        type: integer
+      price_yearly:
+        type: integer
+      tier:
+        type: string
+    type: object
   organizations.UpdateMemberRoleRequest:
     description: Request body for updating member role
     properties:
@@ -350,6 +435,19 @@ definitions:
         type: string
     required:
     - role
+    type: object
+  organizations.UsageInfo:
+    properties:
+      clients:
+        type: integer
+      invoices_this_month:
+        type: integer
+      members:
+        type: integer
+      owned_workspaces:
+        type: integer
+      projects:
+        type: integer
     type: object
   projects.CreateProjectRequest:
     description: Request body for project creation
@@ -602,22 +700,24 @@ definitions:
   utils.APIResponse:
     properties:
       data: {}
-      license_warning:
-        $ref: '#/definitions/utils.LicenseWarning'
       message:
         type: string
       success:
         type: boolean
+      tier_info:
+        $ref: '#/definitions/utils.TierInfo'
     type: object
-  utils.LicenseWarning:
+  utils.TierInfo:
     properties:
       days_remaining:
         type: integer
-      expired:
-        type: boolean
-      expired_at:
+      expires_at:
         type: string
-      message:
+      is_active:
+        type: boolean
+      tier:
+        type: string
+      warning:
         type: string
     type: object
 info:
@@ -627,6 +727,52 @@ info:
   title: GoTask API
   version: 1.0.0
 paths:
+  /admin/users/{id}/tier:
+    patch:
+      consumes:
+      - application/json
+      description: Activate a subscription tier for a user. Requires admin role.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Tier activation payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/organizations.ActivateTierRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tier activated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/organizations.ActivateTierResult'
+              type: object
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "403":
+          description: Insufficient permission
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Activate tier for user (Admin only)
+      tags:
+      - Tiers
   /api/auth/me:
     get:
       consumes:
@@ -648,95 +794,6 @@ paths:
       summary: Get current user
       tags:
       - Auth
-  /api/licenses:
-    post:
-      consumes:
-      - application/json
-      description: Bulk creates license keys. Requires x-admin-secret header.
-      parameters:
-      - description: Admin secret key
-        in: header
-        name: x-admin-secret
-        required: true
-        type: string
-      - description: License keys to create
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/licenses.CreateLicenseRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Licenses created
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-        "401":
-          description: Invalid admin secret
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-      summary: Create license keys (admin only)
-      tags:
-      - Licenses
-  /api/licenses/activate:
-    post:
-      consumes:
-      - application/json
-      description: Activates a license key for the authenticated user.
-      parameters:
-      - description: License key
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/licenses.ActivateLicenseRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: License activated
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-        "400":
-          description: Invalid or already used key
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-      security:
-      - BearerAuth: []
-      summary: Activate a license key
-      tags:
-      - Licenses
-  /api/licenses/validate:
-    post:
-      consumes:
-      - application/json
-      description: Checks if a license key is valid without requiring authentication.
-      parameters:
-      - description: License key to validate
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/licenses.ValidateLicenseRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Validation result
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-        "400":
-          description: Invalid key format
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-      summary: Validate a license key
-      tags:
-      - Licenses
   /api/users/me:
     patch:
       consumes:
@@ -2405,6 +2462,61 @@ paths:
       summary: Search tasks
       tags:
       - Tasks
+  /tier/plans:
+    get:
+      description: Retrieve all active subscription tier plans with their limits and
+        features. Public endpoint for pricing page.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/organizations.TierPlanWithLimits'
+                  type: array
+              type: object
+        "500":
+          description: Failed to fetch tier plans
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get all tier plans
+      tags:
+      - Tiers
+  /users/me/tier:
+    get:
+      description: Get the authenticated user's tier information including usage statistics.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/organizations.TierInfoResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to fetch tier info
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get my tier info
+      tags:
+      - Tiers
 schemes:
 - https
 securityDefinitions:

@@ -22,6 +22,9 @@ type ProjectRepository interface {
 	// Task cleanup helpers
 	DeleteTasksByProject(projectID uint) error
 	ClearTaskAssignees(projectID uint) error
+
+	// M5: Quota check helpers
+	CountByOrg(orgID string) (int, error)
 }
 
 type projectRepository struct {
@@ -143,4 +146,12 @@ func (r *projectRepository) GetDefaultStatusID() (string, error) {
 // SetProjectStatus sets the status_id for a project
 func (r *projectRepository) SetProjectStatus(projectID uint, statusID string) error {
 	return r.db.Exec("UPDATE projects SET status_id = ? WHERE id = ?", statusID, projectID).Error
+}
+
+// CountByOrg returns the number of projects in an organization.
+// M5: Subscription Tiers — Phase 5: Service Layer — Quota check for project limit.
+func (r *projectRepository) CountByOrg(orgID string) (int, error) {
+	var count int64
+	err := r.db.Model(&Project{}).Where("organization_id = ?", orgID).Count(&count).Error
+	return int(count), err
 }

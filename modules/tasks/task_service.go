@@ -2,7 +2,8 @@ package tasks
 
 import (
 	"errors"
-	"gotask-backend/modules/auth"
+	"gotask-backend/internal/interfaces"
+	"gotask-backend/utils"
 	"log"
 	"strconv"
 	"time"
@@ -40,15 +41,18 @@ func (e *VersionConflictError) Conflict() bool {
 
 type taskService struct {
 	repo        TaskRepository
-	authService auth.AuthService
+	authService interfaces.AuthService
 	labelRepo   LabelRepository
+	orgRepo     interfaces.OrgFinder
 }
 
-func NewTaskService(repo TaskRepository, authS auth.AuthService, labelRepo LabelRepository) TaskService {
+// M5: Subscription Tiers — uses interfaces.AuthService to avoid import cycles.
+func NewTaskService(repo TaskRepository, authS interfaces.AuthService, labelRepo LabelRepository, orgRepo interfaces.OrgFinder) TaskService {
 	return &taskService{
 		repo:        repo,
 		authService: authS,
 		labelRepo:   labelRepo,
+		orgRepo:     orgRepo,
 	}
 }
 
@@ -81,6 +85,31 @@ func (s *taskService) CreateTask(input CreateTaskInput) (*Task, error) {
 	}
 	if input.PriorityID == 0 {
 		input.PriorityID = 2 // Assuming ID 2 is "Medium"
+	}
+
+	// M5: Quota check — check task limit based on org owner's tier
+	effectiveTier := "free"
+	limits := utils.GetTierLimits("free")
+
+	// Get org ID from project, then find owner
+	if orgID, err := s.repo.GetProjectOrgID(strconv.FormatUint(uint64(input.ProjectID), 10)); err == nil {
+		if orgInfo, err := s.orgRepo.FindOrgInfoByID(orgID); err == nil {
+			if owner, err := s.authService.FindByID(orgInfo.OwnerID); err == nil {
+				effectiveTier = utils.GetEffectiveTier(owner.Tier, owner.TierExpiresAt)
+				limits = utils.GetTierLimits(effectiveTier)
+			}
+		}
+	}
+
+	// Check task limit per project
+	if limits.MaxTasksPerProject != -1 {
+		count, err := s.repo.CountByProject(strconv.FormatUint(uint64(input.ProjectID), 10))
+		if err != nil {
+			return nil, err
+		}
+		if count >= limits.MaxTasksPerProject {
+			return nil, utils.ErrQuotaExceeded("task", limits.MaxTasksPerProject, effectiveTier)
+		}
 	}
 
 	task := Task{
@@ -171,7 +200,7 @@ func (s *taskService) UpdateTask(id string, input UpdateTaskInput) (*Task, error
 	// Handle Assignees Sync
 	if input.AssigneeIDs != nil {
 		// Cek apakah user-user ini valid dengan nanya ke Auth Service
-		users, err := s.authService.GetUsersByIDs(input.AssigneeIDs)
+		users, err := s.authService.GetMinimalUsersByIDs(input.AssigneeIDs)
 		if err != nil {
 			return nil, err
 		}

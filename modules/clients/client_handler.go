@@ -125,6 +125,10 @@ func (h *Handler) CreateClient(c *gin.Context) {
 
 	client, err := h.service.CreateClient(input)
 	if err != nil {
+		if quotaErr, ok := err.(*utils.QuotaError); ok {
+			utils.SendError(c, http.StatusForbidden, quotaErr.Error())
+			return
+		}
 		utils.SendError(c, http.StatusInternalServerError, "Failed to create client")
 		return
 	}

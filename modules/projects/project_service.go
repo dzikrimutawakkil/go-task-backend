@@ -2,8 +2,10 @@ package projects
 
 import (
 	"errors"
+	"gotask-backend/internal/interfaces"
 	"gotask-backend/modules/organizations"
 	"gotask-backend/modules/tasks"
+	"gotask-backend/utils"
 	"strconv"
 )
 
@@ -19,10 +21,12 @@ type projectService struct {
 	repo        ProjectRepository
 	taskService tasks.TaskService
 	orgRepo     organizations.OrganizationRepository
+	authService interfaces.AuthService
 }
 
-func NewProjectService(repo ProjectRepository, taskService tasks.TaskService, orgRepo organizations.OrganizationRepository) ProjectService {
-	return &projectService{repo, taskService, orgRepo}
+// M5: Subscription Tiers — added authService for quota checks.
+func NewProjectService(repo ProjectRepository, taskService tasks.TaskService, orgRepo organizations.OrganizationRepository, authS interfaces.AuthService) ProjectService {
+	return &projectService{repo: repo, taskService: taskService, orgRepo: orgRepo, authService: authS}
 }
 
 // Input DTOs
@@ -87,6 +91,26 @@ func (s *projectService) UpdateProject(id string, input UpdateProjectInput) (*Pr
 }
 
 func (s *projectService) CreateProject(input CreateProjectInput, userID uint) (*Project, error) {
+	// M5: Quota check — check project limit based on user's tier
+	effectiveTier := "free"
+	limits := utils.GetTierLimits("free")
+
+	if user, err := s.authService.FindByID(userID); err == nil {
+		effectiveTier = utils.GetEffectiveTier(user.Tier, user.TierExpiresAt)
+		limits = utils.GetTierLimits(effectiveTier)
+	}
+
+	// Check project limit per org
+	if limits.MaxProjects != -1 {
+		count, err := s.repo.CountByOrg(strconv.FormatUint(uint64(input.OrganizationID), 10))
+		if err != nil {
+			return nil, err
+		}
+		if count >= limits.MaxProjects {
+			return nil, utils.ErrQuotaExceeded("project", limits.MaxProjects, effectiveTier)
+		}
+	}
+
 	// Q19: Auto-assign default "Active" status
 	defaultStatusID, err := s.repo.GetDefaultStatusID()
 	if err != nil {

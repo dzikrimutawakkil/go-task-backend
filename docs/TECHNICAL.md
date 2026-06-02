@@ -25,13 +25,12 @@
 
 ```
 modules/
-├── auth/           # Authentication (signup, login, token)
-├── organizations/    # Organization management
-├── projects/        # Project CRUD
-├── tasks/           # Task, Status, Label
-├── clients/         # Client management
-├── invoices/        # Invoice & billing
-└── licenses/        # License activation
+├── auth/              # Authentication (signup, login, token, password reset)
+├── organizations/      # Organization management + tier plans + invitations
+├── projects/          # Project CRUD + labels
+├── tasks/             # Task, status, priority, labels
+├── clients/           # Client management + stats
+└── invoices/          # Invoice + billing + revenue sync
 ```
 
 ### Layer Pattern: Handler → Service → Repository
@@ -40,9 +39,9 @@ modules/
 Handler (HTTP) → Service (Business Logic) → Repository (Database)
 ```
 
-- Handler: Parse request, validate input, return response
-- Service: Business logic, transactions
-- Repository: Database queries
+- **Handler:** Parse request, validate input, return response
+- **Service:** Business logic, transactions, quota enforcement
+- **Repository:** Database queries via GORM
 
 **Tidak boleh** langsung query database dari Handler. **Wajib** pakai Service → Repository.
 
@@ -72,9 +71,10 @@ Request → CORSMiddleware → EnsureJSON → RateLimiter → RequireAuth → Ha
 1. Parse JWT token dari header
 2. Validasi token expiry
 3. Load user dari database
-4. Resolve organization context (dari X-Organization-ID header atau personal workspace)
-5. Set `c.Set("user", minimalUser)
+4. Resolve organization context (dari `X-Organization-ID` header atau personal workspace)
+5. Set `c.Set("user", minimalUser)`
 6. Set `c.Set("org_id", orgID)`
+7. Inject `tier_info` ke response context
 
 ---
 
@@ -83,7 +83,7 @@ Request → CORSMiddleware → EnsureJSON → RateLimiter → RequireAuth → Ha
 ### Core Tables
 
 ```sql
--- Users
+-- Users (with tier)
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     email VARCHAR(100) UNIQUE,
@@ -91,10 +91,12 @@ CREATE TABLE users (
     name VARCHAR(100),
     phone VARCHAR(20),
     address TEXT,
-    plan VARCHAR(20) DEFAULT 'free',
-    license_key VARCHAR(100),
-    license_status VARCHAR(20),
-    created_at TIMESTAMP
+    tier VARCHAR(20) DEFAULT 'free',          -- free, pro, ultimate
+    tier_expires_at TIMESTAMP WITH TIME ZONE,
+    tier_activated_at TIMESTAMP WITH TIME ZONE,
+    tier_activated_by BIGINT REFERENCES users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Organizations (Workspaces)
@@ -102,16 +104,28 @@ CREATE TABLE organizations (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100),
     owner_id BIGINT REFERENCES users(id),
-    org_type VARCHAR(20) DEFAULT 'personal',
-    created_at TIMESTAMP
+    org_type VARCHAR(20) DEFAULT 'personal',  -- personal, team
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- organization_users (Membership)
 CREATE TABLE organization_users (
+    id SERIAL PRIMARY KEY,
     organization_id BIGINT REFERENCES organizations(id),
     user_id BIGINT REFERENCES users(id),
     role VARCHAR(20), -- owner, admin, member
-    joined_at TIMESTAMP
+    joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(organization_id, user_id)
+);
+
+-- project_statuses (Q19)
+CREATE TABLE project_statuses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(50),
+    color VARCHAR(7),
+    index_order INT DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Projects
@@ -124,17 +138,10 @@ CREATE TABLE projects (
     progress BIGINT DEFAULT 0,
     budget DECIMAL,
     deadline DATE,
-    status_id UUID REFERENCES project_statuses(id), -- Q19
+    status_id UUID REFERENCES project_statuses(id),
     version INT DEFAULT 1, -- optimistic locking
-    created_at TIMESTAMP
-);
-
--- project_statuses (Q19)
-CREATE TABLE project_statuses (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(50),
-    color VARCHAR(7),
-    created_at TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- tasks
@@ -146,37 +153,50 @@ CREATE TABLE tasks (
     status_id INT REFERENCES statuses(id),
     priority_id INT REFERENCES priorities(id),
     version INT DEFAULT 1,
-    created_at TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- statuses (Task statuses per project)
 CREATE TABLE statuses (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50),
+    color VARCHAR(7),
     index_order INT,
     project_id BIGINT REFERENCES projects(id),
-    created_at TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- labels (Task labels per project)
+-- labels (Urgency labels per project)
 CREATE TABLE labels (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100),
     color VARCHAR(7),
     project_id BIGINT REFERENCES projects(id),
-    created_at TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- task_users (Assignees)
 CREATE TABLE task_users (
     task_id BIGINT REFERENCES tasks(id),
-    user_id BIGINT REFERENCES users(id)
+    user_id BIGINT REFERENCES users(id),
+    PRIMARY KEY (task_id, user_id)
 );
 
 -- task_labels (Labels assignment)
 CREATE TABLE task_labels (
     task_id BIGINT REFERENCES tasks(id),
-    label_id BIGINT REFERENCES labels(id)
+    label_id BIGINT REFERENCES labels(id),
+    PRIMARY KEY (task_id, label_id)
+);
+
+-- priorities
+CREATE TABLE priorities (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    color VARCHAR(7),
+    index_order INT DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- clients
@@ -188,7 +208,9 @@ CREATE TABLE clients (
     whatsapp VARCHAR(20),
     company VARCHAR(100),
     total_revenue DECIMAL DEFAULT 0,
-    organization_id BIGINT REFERENCES organizations(id)
+    organization_id BIGINT REFERENCES organizations(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- invoices
@@ -200,20 +222,10 @@ CREATE TABLE invoices (
     amount_paid DECIMAL,
     status VARCHAR(20) DEFAULT 'sent', -- sent, paid, cancelled
     invoice_number VARCHAR(20), -- auto-generated: INV-YYYY-XXX
-    paid_at TIMESTAMP,
-    created_at TIMESTAMP
-);
-
--- licenses
-CREATE TABLE licenses (
-    id SERIAL PRIMARY KEY,
-    key VARCHAR(100) UNIQUE,
-    type VARCHAR(50), -- free, pro, team, enterprise
-    status VARCHAR(20), -- available, activated, revoked, expired
-    activated_by BIGINT REFERENCES users(id),
-    activated_at TIMESTAMP,
-    expires_at TIMESTAMP,
-    created_at TIMESTAMP
+    paid_at TIMESTAMP WITH TIME ZONE,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- invitations
@@ -223,17 +235,47 @@ CREATE TABLE invitations (
     email VARCHAR(100),
     role VARCHAR(20),
     token VARCHAR(100) UNIQUE,
-    expires_at TIMESTAMP,
-    created_at TIMESTAMP
+    expires_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- password_reset_tokens
 CREATE TABLE password_reset_tokens (
     token VARCHAR(100) PRIMARY KEY,
     user_id BIGINT REFERENCES users(id),
-    expires_at TIMESTAMP,
-    used_at TIMESTAMP,
-    created_at TIMESTAMP
+    expires_at TIMESTAMP WITH TIME ZONE,
+    used_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- tier_plans (M5)
+CREATE TABLE tier_plans (
+    id SERIAL PRIMARY KEY,
+    tier VARCHAR(20) NOT NULL UNIQUE,
+    name VARCHAR(50) NOT NULL,
+    description TEXT,
+    price_monthly INTEGER NOT NULL DEFAULT 0,
+    price_yearly INTEGER NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- tier_limits (M5)
+CREATE TABLE tier_limits (
+    id SERIAL PRIMARY KEY,
+    tier VARCHAR(20) NOT NULL UNIQUE,
+    max_workspaces INTEGER NOT NULL DEFAULT 1,
+    max_projects INTEGER NOT NULL DEFAULT 3,      -- -1 = unlimited
+    max_tasks_per_project INTEGER NOT NULL DEFAULT 50,
+    max_members INTEGER NOT NULL DEFAULT 1,
+    max_clients INTEGER NOT NULL DEFAULT 5,
+    max_invoices_per_month INTEGER NOT NULL DEFAULT 10,
+    can_comment BOOLEAN NOT NULL DEFAULT false,
+    can_sse BOOLEAN NOT NULL DEFAULT false,
+    can_audit_log BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 ```
 
@@ -241,19 +283,19 @@ CREATE TABLE password_reset_tokens (
 
 ## 🌐 API Endpoints
 
-### Public (No Auth Required)
+### Public Endpoints (No Auth Required)
 
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/signup` | Register user |
+| POST | `/signup` | Register user + auto-login |
 | POST | `/login` | Login user |
 | POST | `/forgot-password` | Request password reset |
 | POST | `/reset-password` | Reset password with token |
 | GET | `/health` | Health check |
 | GET | `/ready` | Readiness check |
-| POST | `/api/licenses/validate` | Validate license key |
+| GET | `/tier/plans` | List all tier plans + pricing (public) |
 
-### Protected (JWT Required)
+### Protected Endpoints (JWT Required)
 
 #### Auth & Profile
 | Method | Endpoint | Description |
@@ -261,15 +303,16 @@ CREATE TABLE password_reset_tokens (
 | GET | `/api/auth/me` | Get current user profile |
 | PATCH | `/api/users/me` | Update profile |
 | PATCH | `/api/users/me/password` | Change password |
-| POST | `/api/users/me/switch-organization` | Switch active workspace (M11) |
+| POST | `/api/users/me/switch-organization` | Switch active workspace |
+| GET | `/api/users/me/tier` | Get tier info + usage + limits |
 
 #### Projects
 | Method | Endpoint | Description |
 |---|---|---|
 | GET | `/projects` | List projects |
-| POST | `/projects` | Create project (Q18 auto-create labels) |
+| POST | `/projects` | Create project (auto-generate labels + status) |
 | GET | `/projects/:id` | Get project (includes project_status) |
-| PATCH | `/projects/:id` | Update project (M12 status update) |
+| PATCH | `/projects/:id` | Update project (update status_id) |
 | DELETE | `/projects/:id` | Delete project |
 | GET | `/projects/:id/labels` | Get project labels |
 | POST | `/projects/:id/labels` | Create label |
@@ -285,9 +328,9 @@ CREATE TABLE password_reset_tokens (
 |---|---|---|
 | GET | `/projects/:id/tasks` | List tasks in project |
 | POST | `/tasks` | Create task |
+| GET | `/tasks/search` | Full-text search tasks |
 | PATCH | `/tasks/:id` | Update task |
 | DELETE | `/tasks/:id` | Delete task |
-| GET | `/tasks/search` | Search tasks |
 
 #### Organizations
 | Method | Endpoint | Description |
@@ -299,52 +342,89 @@ CREATE TABLE password_reset_tokens (
 | PATCH | `/organizations/members/:id` | Update member role |
 | DELETE | `/organizations/members/:id` | Remove member |
 | GET | `/organizations/invitations` | List pending invitations |
+| POST | `/organizations/invitations/:id/resend` | Resend invitation email |
 
 #### Clients & Invoices
 | Method | Endpoint | Description |
 |---|---|---|
 | GET | `/clients` | List clients |
 | POST | `/clients` | Create client |
-| GET | `/clients/:id` | Get client |
+| GET | `/clients/stats` | Revenue statistics |
+| GET | `/clients/:id` | Get client detail |
 | PATCH | `/clients/:id` | Update client |
 | DELETE | `/clients/:id` | Delete client |
-| GET | `/clients/stats` | Client statistics |
 | GET | `/invoices` | List invoices |
-| POST | `/invoices` | Create invoice |
-| GET | `/invoices/:id` | Get invoice |
+| POST | `/invoices` | Create invoice (auto-generate INV-YYYY-XXX) |
+| GET | `/invoices/:id` | Get invoice detail |
 | PATCH | `/invoices/:id` | Update invoice |
 | DELETE | `/invoices/:id` | Delete invoice |
-| PATCH | `/invoices/:id/mark-paid` | Mark invoice as paid |
+| PATCH | `/invoices/:id/mark-paid` | Mark paid + sync client revenue |
 
-#### Licenses
+#### Admin
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/api/licenses/activate` | Activate license |
-| POST | `/api/licenses` | Create license (admin) |
+| PATCH | `/api/admin/users/:id/tier` | Activate/extend user tier (admin only) |
 
 ---
 
 ## 🔑 Key Features
 
-### Q17: License Warning
-- Middleware `RequireAuth` check license status on every request
-- License warning injected ke response context
-- Response include `license_warning` field (frontend show banner)
+### Subscription Tiers (M5)
+- Tier diikat ke **user** (bukan organisasi)
+- Semua organisasi milik user mewarisi tier yang sama
+- Aktivasi manual oleh admin (tanpa Stripe/payment gateway)
+- Quota enforcement di service layer
 
-### Q18: Auto-generate Labels
-- Saat project dibuat, auto-create 5 label:
-  - Todo (gray #E2E8F0)
-  - On Going (blue #3B82F6)
-  - Done (green #22C55E)
-  - Delivered (purple #A855F7)
-  - Canceled (red #EF4444)
+### Quota Enforcement
+Quota di-check sebelum operasi **Create**:
 
-### Q19: Project Status
-- Seed 4 project_statuses saat startup:
-  - Active (green #22C55E) - DEFAULT
-  - On Hold (amber #F59E0B)
-  - Completed (blue #3B82F6)
-  - Archived (gray #6B7280)
+| Resource | Free | Pro | Ultimate |
+|---|---|---|---|
+| Workspaces | 1 | 2 | 4 |
+| Projects per workspace | 3 | Unlimited | Unlimited |
+| Tasks per project | 50 | Unlimited | Unlimited |
+| Members per workspace | 1 | 3 | 15 |
+| Clients | 5 | Unlimited | Unlimited |
+| Invoices per bulan | 10 | Unlimited | Unlimited |
+
+Jika quota exceeded → HTTP 403 `quota exceeded: workspace limit is 1 on free tier. Please upgrade.`
+
+### Tier Feature Gate
+Middleware `RequireTierFeature(feature)` blocking akses fitur berdasarkan tier:
+
+```go
+// Route example
+tasks.POST("/:id/comments", RequireTierFeature("comment"), commentHandler.Create)
+```
+
+### Q17: Tier Info
+Middleware `RequireAuth` inject `tier_info` ke setiap response:
+
+```json
+"tier_info": {
+  "tier": "free",
+  "is_active": true,
+  "expires_at": null,
+  "days_remaining": 0,
+  "warning": "Upgrade untuk lebih banyak fitur."
+}
+```
+
+### Q18: Auto-generate Urgency Labels
+Saat project dibuat, auto-create 3 urgency labels:
+- **Urgent** (red #EF4444) — harus selesai secepatnya
+- **Normal** (yellow #F59E0B) — prioritas standar
+- **Low** (blue #3B82F6) — bisa nanti
+
+### Q19: Project Status Workflow
+Seed 4 project_statuses saat startup:
+- **Active** (green #22C55E) — DEFAULT
+- **On Hold** (amber #F59E0B)
+- **Completed** (blue #3B82F6)
+- **Archived** (gray #6B7280)
+
+Saat project dibuat, auto-generate 5 task statuses:
+- Todo, On Progress, Done, Pending, Cancel
 
 ### M11: Workspace Switch
 - Endpoint: `POST /api/users/me/switch-organization`
@@ -363,9 +443,15 @@ CREATE TABLE password_reset_tokens (
 ```json
 {
   "success": true,
-  "message": "Success",
+  "message": "Operation successful",
   "data": { ... },
-  "license_warning": { ... }
+  "tier_info": {
+    "tier": "pro",
+    "is_active": true,
+    "expires_at": "2027-05-28T00:00:00Z",
+    "days_remaining": 365,
+    "warning": null
+  }
 }
 ```
 
@@ -374,17 +460,33 @@ CREATE TABLE password_reset_tokens (
 {
   "success": false,
   "message": "Error description",
-  "data": null
+  "data": null,
+  "tier_info": { ... }
 }
 ```
 
-### License Warning (Q17)
+### Quota Exceeded (HTTP 403)
 ```json
-"license_warning": {
-  "expired": true,
-  "days_remaining": -7,
-  "message": "License expired. Please upgrade to continue premium features."
+{
+  "success": false,
+  "message": "quota exceeded: workspace limit is 1 on free tier. Please upgrade.",
+  "data": null,
+  "tier_info": { ... }
 }
+```
+
+---
+
+## 🧩 Utility Functions
+
+### utils/quota.go
+Helper functions untuk tier management:
+
+```go
+// GetTierLimits(tier string) → TierLimits struct
+// IsTierActive(tier string, expiresAt *time.Time) → bool
+// GetEffectiveTier(tier string, expiresAt *time.Time) → string (fallback to free if expired)
+// ErrQuotaExceeded(resource, limit, tier) → *QuotaError
 ```
 
 ---
@@ -403,6 +505,12 @@ go build -o main .
 
 # Test
 go test ./...
+
+# Generate Swagger docs
+go run github.com/swaggo/swag/cmd/swag@latest init -g main.go -o docs --parseDependency
+
+# Migration
+migrate -path ./migrations -database "postgres://..." up
 ```
 
 ---
@@ -410,13 +518,22 @@ go test ./...
 ## 📝 Environment Variables
 
 ```bash
+# Database
 DB_HOST=localhost
 DB_USER=postgres
 DB_PASSWORD=secret
 DB_NAME=gotaskdb
 DB_PORT=5432
-SECRET_KEY=your-secret-key
-MIGRATION_URL=postgres://user:pass@localhost:5432/dbname
+
+# Auth
+SECRET_KEY=your-secret-key-min-32-chars
+
+# SMTP (email)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=email@gmail.com
+SMTP_PASSWORD=app-password
+SMTP_FROM=noreply@gotask.app
 ```
 
 ---
@@ -429,6 +546,7 @@ MIGRATION_URL=postgres://user:pass@localhost:5432/dbname
 - CORS open di development, locked di production
 - No hardcoded secrets (always use env vars)
 - Optimistic locking via version column
+- Tier feature gate middleware
 
 ---
 

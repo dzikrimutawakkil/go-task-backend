@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"gotask-backend/internal/interfaces"
+	"gotask-backend/models"
 	"gotask-backend/modules/organizations"
 	"gotask-backend/utils"
 
@@ -28,12 +29,10 @@ type AuthService interface {
 	ChangePassword(userID uint, currentPassword string, newPassword string) error
 	GetMinimalUserByEmail(email string) (*interfaces.MinimalUser, error)
 	GetMinimalUsersByIDs(ids []uint) ([]interfaces.MinimalUser, error)
+	FindByID(id uint) (*interfaces.MinimalUser, error)
 	// M11: Workspace Switch Endpoint
 	CheckOrganizationMembership(userID uint, orgID uint) (bool, error)
 }
-
-// compile-time interface satisfaction check
-var _ interfaces.AuthService = (*authService)(nil)
 
 type authService struct {
 	repo    AuthRepository
@@ -65,13 +64,17 @@ func (s *authService) GetMinimalUserByEmail(email string) (*interfaces.MinimalUs
 		return nil, err
 	}
 	return &interfaces.MinimalUser{
-		ID:        user.ID,
-		Email:     user.Email,
-		Name:      user.Name,
-		Phone:     user.Phone,
-		Address:   user.Address,
-		Password:  user.Password,
-		CreatedAt: user.CreatedAt,
+		ID:              user.ID,
+		Email:           user.Email,
+		Name:            user.Name,
+		Phone:           user.Phone,
+		Address:         user.Address,
+		Password:        user.Password,
+		Tier:            user.Tier,
+		TierExpiresAt:   user.TierExpiresAt,
+		TierActivatedAt: user.TierActivatedAt,
+		TierActivatedBy: user.TierActivatedBy,
+		CreatedAt:       user.CreatedAt,
 	}, nil
 }
 
@@ -83,13 +86,17 @@ func (s *authService) GetMinimalUsersByIDs(ids []uint) ([]interfaces.MinimalUser
 	result := make([]interfaces.MinimalUser, len(users))
 	for i, u := range users {
 		result[i] = interfaces.MinimalUser{
-			ID:        u.ID,
-			Email:     u.Email,
-			Name:      u.Name,
-			Phone:     u.Phone,
-			Address:   u.Address,
-			Password:  u.Password,
-			CreatedAt: u.CreatedAt,
+			ID:              u.ID,
+			Email:           u.Email,
+			Name:            u.Name,
+			Phone:           u.Phone,
+			Address:         u.Address,
+			Password:        u.Password,
+			Tier:            u.Tier,
+			TierExpiresAt:   u.TierExpiresAt,
+			TierActivatedAt: u.TierActivatedAt,
+			TierActivatedBy: u.TierActivatedBy,
+			CreatedAt:       u.CreatedAt,
 		}
 	}
 	return result, nil
@@ -311,4 +318,47 @@ func (s *authService) ChangePassword(userID uint, currentPassword string, newPas
 // M11: Workspace Switch Endpoint
 func (s *authService) CheckOrganizationMembership(userID uint, orgID uint) (bool, error) {
 	return s.orgRepo.CheckMembership(userID, orgID)
+}
+
+// FindByID returns a minimal user by ID for quota checks.
+// M5: Subscription Tiers — Phase 5: Service Layer
+func (s *authService) FindByID(id uint) (*interfaces.MinimalUser, error) {
+	user, err := s.repo.FindUserByID(id)
+	if err != nil {
+		return nil, err
+	}
+	return &interfaces.MinimalUser{
+		ID:              user.ID,
+		Email:           user.Email,
+		Name:            user.Name,
+		Phone:           user.Phone,
+		Address:         user.Address,
+		Password:        user.Password,
+		Tier:            user.Tier,
+		TierExpiresAt:   user.TierExpiresAt,
+		TierActivatedAt: user.TierActivatedAt,
+		TierActivatedBy: user.TierActivatedBy,
+		CreatedAt:       user.CreatedAt,
+	}, nil
+}
+
+// FindByIDForModels returns a minimal user for models package (cross-package interface).
+func (s *authService) FindByIDForModels(id uint) (*models.MinimalUser, error) {
+	user, err := s.repo.FindUserByID(id)
+	if err != nil {
+		return nil, err
+	}
+	return &models.MinimalUser{
+		ID:              user.ID,
+		Email:           user.Email,
+		Name:            user.Name,
+		Phone:           user.Phone,
+		Address:         user.Address,
+		Password:        user.Password,
+		Tier:            user.Tier,
+		TierExpiresAt:   user.TierExpiresAt,
+		TierActivatedAt: user.TierActivatedAt,
+		TierActivatedBy: user.TierActivatedBy,
+		CreatedAt:       user.CreatedAt,
+	}, nil
 }

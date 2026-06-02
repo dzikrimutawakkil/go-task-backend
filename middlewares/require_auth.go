@@ -69,15 +69,16 @@ func RequireAuth(c *gin.Context) {
 
 		// 5. Attach User to request
 		minimalUser := models.MinimalUser{
-			ID:            user.ID,
-			Email:         user.Email,
-			Name:          user.Name,
-			Phone:         user.Phone,
-			Address:       user.Address,
-			Plan:          user.Plan,
-			LicenseKey:    user.LicenseKey,
-			LicenseStatus: user.LicenseStatus,
-			CreatedAt:     user.CreatedAt,
+			ID:              user.ID,
+			Email:           user.Email,
+			Name:            user.Name,
+			Phone:           user.Phone,
+			Address:         user.Address,
+			Tier:            user.Tier,
+			TierExpiresAt:   user.TierExpiresAt,
+			TierActivatedAt: user.TierActivatedAt,
+			TierActivatedBy: user.TierActivatedBy,
+			CreatedAt:       user.CreatedAt,
 		}
 
 		c.Set("user", minimalUser)
@@ -114,9 +115,8 @@ func RequireAuth(c *gin.Context) {
 			c.Set("org_id", strconv.FormatUint(uint64(orgID), 10))
 		}
 
-		// Q17: License Expiry Soft Warning
-		// Check license status and set warning in context for all responses
-		setLicenseWarning(c, user.LicenseKey, user.Plan)
+		// Q17: Tier Info — set tier info in context for all responses
+		setTierInfo(c, user.Tier, user.TierExpiresAt)
 
 		c.Next()
 	} else {
@@ -155,56 +155,27 @@ func resolvePersonalOrgID(userID uint) (uint, error) {
 	return org.ID, nil
 }
 
-// setLicenseWarning checks the user's license status and sets warning in Gin context.
-// Q17: License Expiry Soft Warning Banner
-func setLicenseWarning(c *gin.Context, licenseKey *string, plan string) {
-	warning := &utils.LicenseWarning{}
-
-	if plan == "free" || plan == "" {
-		warning.Expired = true
-		warning.DaysRemaining = 0
-		warning.Message = "You are on a free plan. Upgrade to access premium features."
-		utils.SetLicenseWarning(c, warning)
-		return
+// setTierInfo checks the user's tier status and sets info in Gin context.
+// M5: Subscription Tiers — Phase 6: Response & Middleware
+func setTierInfo(c *gin.Context, tier string, tierExpiresAt *time.Time) {
+	info := &utils.TierInfo{
+		Tier:     tier,
+		IsActive: utils.IsTierActive(tier, tierExpiresAt),
 	}
 
-	// Check if license key exists and is valid
-	if licenseKey != nil && *licenseKey != "" {
-		// Look up the license in the licenses table
-		var license struct {
-			ExpiresAt *time.Time
-			Status    string
-		}
-		err := config.DB.Table("licenses").
-			Select("expires_at, status").
-			Where("key = ?", *licenseKey).
-			First(&license).Error
-
-		if err == nil {
-			// Set X-License-Warning header for all responses
-			if license.Status == "activated" || license.Status == "available" {
-				if license.ExpiresAt != nil {
-					daysRemaining := int(time.Until(*license.ExpiresAt).Hours() / 24)
-
-					if daysRemaining < 0 {
-						warning.Expired = true
-						warning.DaysRemaining = daysRemaining
-						warning.ExpiredAt = license.ExpiresAt.Format(time.RFC3339)
-						warning.Message = "License expired. Please upgrade to continue premium features."
-					} else if daysRemaining <= 7 {
-						warning.Expired = false
-						warning.DaysRemaining = daysRemaining
-						warning.Message = "License expires in " + strconv.Itoa(daysRemaining) + " days. Consider upgrading."
-					}
-				}
-			} else if license.Status == "expired" || license.Status == "revoked" {
-				warning.Expired = true
-				warning.DaysRemaining = 0
-				warning.Message = "License " + license.Status + ". Please upgrade to continue."
-			}
-		}
+	if tierExpiresAt != nil {
+		info.ExpiresAt = tierExpiresAt.Format(time.RFC3339)
+		info.DaysRemaining = utils.DaysRemaining(tierExpiresAt)
 	}
 
-	// Always set the warning (even if nil) for header consistency
-	utils.SetLicenseWarning(c, warning)
+	if tier == "free" {
+		info.IsActive = true
+		info.Warning = "Upgrade to access premium features."
+	} else if !info.IsActive {
+		info.Warning = "Tier expired. Your account has been downgraded to Free."
+	} else if info.DaysRemaining <= 7 && info.DaysRemaining >= 0 {
+		info.Warning = "Tier expires in " + strconv.Itoa(info.DaysRemaining) + " days. Consider renewing."
+	}
+
+	utils.SetTierInfo(c, info)
 }
