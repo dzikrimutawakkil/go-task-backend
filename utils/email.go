@@ -128,13 +128,13 @@ func buildEmailMessage(from, to, subject, body string) string {
 	return sb.String()
 }
 
-// SendInviteEmail sends an organization invitation email.
+// SendInviteEmail sends an workspace invitation email.
 func SendInviteEmail(to, orgName, inviteURL string) error {
 	subject := fmt.Sprintf("You're invited to join %s", orgName)
 	body := fmt.Sprintf(
 		`Hello!
 
-You have been invited to join the organization "%s" on our platform.
+You have been invited to join the workspace "%s" on our platform.
 
 Click the link below to accept the invitation:
 %s

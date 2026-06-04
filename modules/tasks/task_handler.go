@@ -66,7 +66,7 @@ func NewTaskHandler(service TaskService) *Handler {
 // @Param       id path int true "Project ID"
 // @Param       page query int false "Page number" default(1)
 // @Param       limit query int false "Items per page" default(50)
-// @Param       X-Organization-ID header string true "Organization ID"
+// @Param       X-Workspace-ID header string false "Workspace ID (optional - auto-resolved if not provided)"
 // @Security    BearerAuth
 // @Success     200 {object} utils.APIResponse "success"
 // @Failure     400 {object} utils.APIResponse "Missing organization header"
@@ -75,17 +75,17 @@ func NewTaskHandler(service TaskService) *Handler {
 func (h *Handler) FindTasksByProject(c *gin.Context) {
 	projectID := c.Param("id")
 
-	orgIDInterface, exists := c.Get("org_id")
+	wsIDInterface, exists := c.Get("workspace_id")
 	if !exists {
-		utils.SendError(c, http.StatusBadRequest, "X-Organization-ID header is required")
+		utils.SendError(c, http.StatusBadRequest, "Workspace context not found")
 		return
 	}
-	orgID := orgIDInterface.(string)
+	wsID := wsIDInterface.(string)
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
 
-	tasks, total, err := h.service.GetTasksByProject(projectID, orgID, page, limit)
+	tasks, total, err := h.service.GetTasksByProject(projectID, wsID, page, limit)
 
 	if err != nil {
 		utils.SendError(c, http.StatusInternalServerError, "Failed to fetch tasks")
@@ -122,19 +122,19 @@ func (h *Handler) FindTasksByProject(c *gin.Context) {
 // @Param       created_from query string false "Filter by created date start (RFC3339)"
 // @Param       created_to query string false "Filter by created date end (RFC3339)"
 // @Param       label_ids query string false "Filter by labels (comma-separated IDs)"
-// @Param       X-Organization-ID header string true "Organization ID"
+// @Param       X-Workspace-ID header string false "Workspace ID (optional - auto-resolved if not provided)"
 // @Security    BearerAuth
 // @Success     200 {object} utils.APIResponse "success"
-// @Failure     400 {object} utils.APIResponse "Missing organization header"
+// @Failure     400 {object} utils.APIResponse "Missing workspace context"
 // @Failure     500 {object} utils.APIResponse "Failed to search tasks"
 // @Router      /tasks/search [get]
 func (h *Handler) SearchTasks(c *gin.Context) {
-	orgIDInterface, exists := c.Get("org_id")
+	wsIDInterface, exists := c.Get("workspace_id")
 	if !exists {
-		utils.SendError(c, http.StatusBadRequest, "X-Organization-ID header is required")
+		utils.SendError(c, http.StatusBadRequest, "Workspace context not found")
 		return
 	}
-	orgID := orgIDInterface.(string)
+	wsID := wsIDInterface.(string)
 
 	// Parse query params
 	query := c.Query("q")
@@ -213,7 +213,7 @@ func (h *Handler) SearchTasks(c *gin.Context) {
 		filters.LabelIDs = labelIDs
 	}
 
-	tasks, total, err := h.service.SearchTasks(orgID, query, filters, page, limit)
+	tasks, total, err := h.service.SearchTasks(wsID, query, filters, page, limit)
 	if err != nil {
 		utils.SendError(c, http.StatusInternalServerError, "Failed to search tasks")
 		return
@@ -386,7 +386,7 @@ func (h *Handler) DeleteTask(c *gin.Context) {
 // @Tags        Statuses
 // @Produce     json
 // @Param       id path int true "Project ID"
-// @Param       X-Organization-ID header string true "Organization ID"
+// @Param       X-Workspace-ID header string true "Organization ID"
 // @Security    BearerAuth
 // @Success     200 {object} utils.APIResponse "success"
 // @Failure     500 {object} utils.APIResponse "Failed to fetch statuses"
@@ -411,7 +411,7 @@ func (h *Handler) FindStatusesByProject(c *gin.Context) {
 // @Produce     json
 // @Param       id path int true "Project ID"
 // @Param       body body CreateStatusRequest true "Status payload"
-// @Param       X-Organization-ID header string true "Organization ID"
+// @Param       X-Workspace-ID header string true "Organization ID"
 // @Security    BearerAuth
 // @Success     201 {object} utils.APIResponse{data=Status} "Status created"
 // @Failure     400 {object} utils.APIResponse "Validation error"

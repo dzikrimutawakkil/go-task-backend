@@ -92,7 +92,7 @@ func (r *labelRepository) ClearTaskLabels(taskID uint) error {
 func (r *labelRepository) CheckProjectAccess(projectID string, orgID string) (bool, error) {
 	var count int64
 	err := r.db.Table("projects").
-		Where("id = ? AND organization_id = ?", projectID, orgID).
+		Where("id = ? AND workspace_id = ?", projectID, orgID).
 		Count(&count).Error
 	if err != nil {
 		return false, err

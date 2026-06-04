@@ -6,29 +6,30 @@ import (
 	"strconv"
 )
 
+// M-MIGRATION: Updated to use workspace-based tier
 type ClientService interface {
-	GetClients(orgID string) ([]Client, error)
+	GetClients(workspaceID string) ([]Client, error)
 	GetClient(id uint) (*Client, error)
 	CreateClient(input CreateClientInput) (*Client, error)
 	UpdateClient(id uint, input UpdateClientInput) (*Client, error)
 	DeleteClient(id uint) error
-	GetClientStats(orgID string) (*ClientStats, error)
+	GetClientStats(workspaceID string) (*ClientStats, error)
 	AddRevenue(clientID uint, amount float64) error
 }
 
 type clientService struct {
-	repo    ClientRepository
-	orgRepo interfaces.OrgFinder
-	authS   interfaces.AuthService
+	repo   ClientRepository
+	wsRepo interfaces.WorkspaceFinder
+	authS  interfaces.AuthService
 }
 
-// M5: Subscription Tiers — added orgRepo and authS for quota checks.
-func NewClientService(repo ClientRepository, orgRepo interfaces.OrgFinder, authS interfaces.AuthService) ClientService {
-	return &clientService{repo: repo, orgRepo: orgRepo, authS: authS}
+// M5: Subscription Tiers — M-MIGRATION: uses workspace-based tier for quota checks
+func NewClientService(repo ClientRepository, wsRepo interfaces.WorkspaceFinder, authS interfaces.AuthService) ClientService {
+	return &clientService{repo: repo, wsRepo: wsRepo, authS: authS}
 }
 
-func (s *clientService) GetClients(orgID string) ([]Client, error) {
-	return s.repo.FindAllByOrg(orgID)
+func (s *clientService) GetClients(workspaceID string) ([]Client, error) {
+	return s.repo.FindAllByWorkspace(workspaceID)
 }
 
 func (s *clientService) GetClient(id uint) (*Client, error) {
@@ -36,19 +37,18 @@ func (s *clientService) GetClient(id uint) (*Client, error) {
 }
 
 func (s *clientService) CreateClient(input CreateClientInput) (*Client, error) {
-	// M5: Quota check — check client limit based on org owner's tier
+	// M-MIGRATION: Quota check — check client limit based on workspace's tier
 	effectiveTier := "free"
 	limits := utils.GetTierLimits("free")
 
-	if orgInfo, err := s.orgRepo.FindOrgInfoByID(input.OrganizationID); err == nil {
-		if owner, err := s.authS.FindByID(orgInfo.OwnerID); err == nil {
-			effectiveTier = utils.GetEffectiveTier(owner.Tier, owner.TierExpiresAt)
-			limits = utils.GetTierLimits(effectiveTier)
-		}
+	wsInfo, err := s.wsRepo.FindWorkspaceInfoByID(input.WorkspaceID)
+	if err == nil {
+		effectiveTier = utils.GetEffectiveTier(wsInfo.Tier, wsInfo.TierExpiresAt)
+		limits = utils.GetTierLimits(effectiveTier)
 	}
 
 	if limits.MaxClients != -1 {
-		count, err := s.repo.CountByOrg(strconv.FormatUint(uint64(input.OrganizationID), 10))
+		count, err := s.repo.CountByWorkspace(strconv.FormatUint(uint64(input.WorkspaceID), 10))
 		if err != nil {
 			return nil, err
 		}
@@ -58,16 +58,16 @@ func (s *clientService) CreateClient(input CreateClientInput) (*Client, error) {
 	}
 
 	client := Client{
-		OrganizationID: input.OrganizationID,
-		Name:           input.Name,
-		Email:          input.Email,
-		WhatsApp:       input.WhatsApp,
-		Phone:          input.Phone,
-		Company:        input.Company,
-		Website:        input.Website,
-		Address:        input.Address,
-		Notes:          input.Notes,
-		TotalRevenue:   0,
+		WorkspaceID:  input.WorkspaceID,
+		Name:         input.Name,
+		Email:        input.Email,
+		WhatsApp:     input.WhatsApp,
+		Phone:        input.Phone,
+		Company:      input.Company,
+		Website:      input.Website,
+		Address:      input.Address,
+		Notes:        input.Notes,
+		TotalRevenue: 0,
 	}
 	if err := s.repo.Create(&client); err != nil {
 		return nil, err
@@ -120,13 +120,14 @@ func (s *clientService) DeleteClient(id uint) error {
 	return s.repo.Delete(client)
 }
 
-func (s *clientService) GetClientStats(orgID string) (*ClientStats, error) {
-	total, err := s.repo.CountByOrg(orgID)
+// M-MIGRATION: Renamed from GetClientStats
+func (s *clientService) GetClientStats(workspaceID string) (*ClientStats, error) {
+	total, err := s.repo.CountByWorkspace(workspaceID)
 	if err != nil {
 		return nil, err
 	}
 
-	totalRevenue, err := s.repo.SumRevenueByOrg(orgID)
+	totalRevenue, err := s.repo.SumRevenueByWorkspace(workspaceID)
 	if err != nil {
 		return nil, err
 	}

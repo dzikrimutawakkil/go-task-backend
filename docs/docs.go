@@ -15,14 +15,14 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/admin/users/{id}/tier": {
+        "/admin/workspaces/{id}/tier": {
             "patch": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Activate a subscription tier for a user. Requires admin role.",
+                "description": "Activate a subscription tier for a workspace. Requires admin role.",
                 "consumes": [
                     "application/json"
                 ],
@@ -32,11 +32,11 @@ const docTemplate = `{
                 "tags": [
                     "Tiers"
                 ],
-                "summary": "Activate tier for user (Admin only)",
+                "summary": "Activate tier for workspace (Admin only)",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "User ID",
+                        "description": "Workspace ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -47,7 +47,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/organizations.ActivateTierRequest"
+                            "$ref": "#/definitions/workspaces.ActivateTierRequest"
                         }
                     }
                 ],
@@ -63,7 +63,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/organizations.ActivateTierResult"
+                                            "$ref": "#/definitions/workspaces.ActivateTierResult"
                                         }
                                     }
                                 }
@@ -83,41 +83,7 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "User not found",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/auth/me": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns the authenticated user's profile based on JWT token.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "Get current user",
-                "responses": {
-                    "200": {
-                        "description": "success",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
+                        "description": "Workspace not found",
                         "schema": {
                             "$ref": "#/definitions/utils.APIResponse"
                         }
@@ -227,14 +193,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/users/me/switch-organization": {
+        "/api/users/me/switch-workspace": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Switch the user's active organization context. User must be a member of the target organization.",
+                "description": "Switch the user's active workspace context. User must be a member of the target workspace.",
                 "consumes": [
                     "application/json"
                 ],
@@ -244,33 +210,33 @@ const docTemplate = `{
                 "tags": [
                     "Profile"
                 ],
-                "summary": "Switch active organization",
+                "summary": "Switch active workspace",
                 "parameters": [
                     {
-                        "description": "Organization switch payload",
+                        "description": "Workspace switch payload",
                         "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/auth.SwitchOrganizationRequest"
+                            "$ref": "#/definitions/auth.SwitchWorkspaceRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Organization switched successfully",
+                        "description": "Workspace switched successfully",
                         "schema": {
                             "$ref": "#/definitions/utils.APIResponse"
                         }
                     },
                     "400": {
-                        "description": "Invalid organization ID",
+                        "description": "Invalid workspace ID",
                         "schema": {
                             "$ref": "#/definitions/utils.APIResponse"
                         }
                     },
                     "403": {
-                        "description": "Not a member of the organization",
+                        "description": "Not a member of the workspace",
                         "schema": {
                             "$ref": "#/definitions/utils.APIResponse"
                         }
@@ -285,7 +251,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get all clients for the current organization.",
+                "description": "Get all clients for the current workspace.",
                 "produces": [
                     "application/json"
                 ],
@@ -293,6 +259,15 @@ const docTemplate = `{
                     "Clients"
                 ],
                 "summary": "List clients",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "success",
@@ -314,7 +289,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create a new client for the current organization.",
+                "description": "Create a new client for the current workspace.",
                 "consumes": [
                     "application/json"
                 ],
@@ -334,6 +309,13 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/clients.CreateClientRequest"
                         }
+                    },
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -373,6 +355,15 @@ const docTemplate = `{
                     "Clients"
                 ],
                 "summary": "Get client statistics",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "success",
@@ -593,7 +584,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Accept an organization invitation using the token received via email. The authenticated user must match the invited email.",
+                "description": "Accept a workspace invitation using the token received via email. The authenticated user must match the invited email.",
                 "consumes": [
                     "application/json"
                 ],
@@ -611,13 +602,13 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/organizations.AcceptInvitationRequest"
+                            "$ref": "#/definitions/workspaces.AcceptInvitationRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Successfully joined the organization",
+                        "description": "Successfully joined the workspace",
                         "schema": {
                             "allOf": [
                                 {
@@ -627,7 +618,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/organizations.Organization"
+                                            "$ref": "#/definitions/workspaces.Workspace"
                                         }
                                     }
                                 }
@@ -680,7 +671,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/organizations.ResendInvitationRequest"
+                            "$ref": "#/definitions/workspaces.ResendInvitationRequest"
                         }
                     }
                 ],
@@ -725,8 +716,8 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Organization ID",
-                        "name": "X-Organization-ID",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
                         "in": "header",
                         "required": true
                     }
@@ -760,7 +751,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get all invoices for the current organization.",
+                "description": "Get all invoices for the current workspace.",
                 "produces": [
                     "application/json"
                 ],
@@ -768,6 +759,15 @@ const docTemplate = `{
                     "Invoices"
                 ],
                 "summary": "List invoices",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "success",
@@ -809,6 +809,13 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/invoices.CreateInvoiceRequest"
                         }
+                    },
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -1051,7 +1058,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Organization ID",
-                        "name": "X-Organization-ID",
+                        "name": "X-Workspace-ID",
                         "in": "header",
                         "required": true
                     }
@@ -1108,7 +1115,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Organization ID",
-                        "name": "X-Organization-ID",
+                        "name": "X-Workspace-ID",
                         "in": "header",
                         "required": true
                     }
@@ -1208,412 +1215,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/organizations": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Retrieve a list of all organizations the authenticated user belongs to.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Organizations"
-                ],
-                "summary": "Get user organizations",
-                "responses": {
-                    "200": {
-                        "description": "Success",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/utils.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/organizations.Organization"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to fetch organizations",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Create a new organization. The requesting user automatically becomes the owner.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Organizations"
-                ],
-                "summary": "Create organization",
-                "parameters": [
-                    {
-                        "description": "Organization payload",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/organizations.CreateOrgRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Organization created successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/utils.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/organizations.Organization"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Validation error",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to create organization",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/organizations/invitations": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Retrieve all pending invitations for the organization. Requires owner or admin role.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Invitations"
-                ],
-                "summary": "List pending invitations",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "X-Organization-ID",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/utils.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/organizations.OrganizationInvitation"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Missing organization header",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Insufficient permission",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to fetch invitations",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/organizations/invite": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Send an invitation email to add a new member to the organization. Requires owner or admin role.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Organizations"
-                ],
-                "summary": "Invite a member",
-                "parameters": [
-                    {
-                        "description": "Invitation payload",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/organizations.InviteMemberRequest"
-                        }
-                    },
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "X-Organization-ID",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Member added successfully",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Validation error or invitation failed",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Insufficient permission",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/organizations/members": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Retrieve all members of the organization with their roles.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Organizations"
-                ],
-                "summary": "Get organization members",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "X-Organization-ID",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Missing organization header",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to fetch members",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/organizations/members/{user_id}": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Remove a member from the organization. Requires owner or admin role. Owner cannot be removed.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Organizations"
-                ],
-                "summary": "Remove a member",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "User ID to remove",
-                        "name": "user_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "X-Organization-ID",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Member removed successfully",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid user ID format",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Insufficient permission or cannot remove owner",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    }
-                }
-            },
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Update a member's role within the organization. Requires owner or admin role. Cannot change owner's role.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Organizations"
-                ],
-                "summary": "Update member role",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "User ID to update",
-                        "name": "user_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Role update payload",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/organizations.UpdateMemberRoleRequest"
-                        }
-                    },
-                    {
-                        "type": "string",
-                        "description": "Organization ID",
-                        "name": "X-Organization-ID",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Role updated successfully",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid role or user ID",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Insufficient permission or cannot change owner role",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/projects": {
             "get": {
                 "security": [
@@ -1621,7 +1222,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Retrieve all projects belonging to the current organization.",
+                "description": "Retrieve all projects belonging to the current workspace.",
                 "produces": [
                     "application/json"
                 ],
@@ -1632,8 +1233,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Organization ID",
-                        "name": "X-Organization-ID",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
                         "in": "header",
                         "required": true
                     }
@@ -1661,7 +1262,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Missing organization header",
+                        "description": "Missing workspace header",
                         "schema": {
                             "$ref": "#/definitions/utils.APIResponse"
                         }
@@ -1680,7 +1281,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create a new project within the organization.",
+                "description": "Create a new project within the workspace. Can optionally link to a client or create one inline.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1703,8 +1304,8 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Organization ID",
-                        "name": "X-Organization-ID",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
                         "in": "header",
                         "required": true
                     }
@@ -1729,7 +1330,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Validation error",
+                        "description": "Validation error or cannot use both client_id and new_client",
                         "schema": {
                             "$ref": "#/definitions/utils.APIResponse"
                         }
@@ -1768,8 +1369,8 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Organization ID",
-                        "name": "X-Organization-ID",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
                         "in": "header",
                         "required": true
                     }
@@ -1825,8 +1426,8 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Organization ID",
-                        "name": "X-Organization-ID",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
                         "in": "header",
                         "required": true
                     }
@@ -1858,7 +1459,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update a project's fields (name, description, status, priority, budget, deadline, progress).",
+                "description": "Update a project's fields including client linking. Use client_id: 0 to unlink.",
                 "produces": [
                     "application/json"
                 ],
@@ -1885,8 +1486,8 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Organization ID",
-                        "name": "X-Organization-ID",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
                         "in": "header",
                         "required": true
                     }
@@ -1951,7 +1552,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Organization ID",
-                        "name": "X-Organization-ID",
+                        "name": "X-Workspace-ID",
                         "in": "header",
                         "required": true
                     }
@@ -2014,7 +1615,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Organization ID",
-                        "name": "X-Organization-ID",
+                        "name": "X-Workspace-ID",
                         "in": "header",
                         "required": true
                     }
@@ -2079,7 +1680,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Organization ID",
-                        "name": "X-Organization-ID",
+                        "name": "X-Workspace-ID",
                         "in": "header",
                         "required": true
                     }
@@ -2136,7 +1737,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Organization ID",
-                        "name": "X-Organization-ID",
+                        "name": "X-Workspace-ID",
                         "in": "header",
                         "required": true
                     }
@@ -2215,7 +1816,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Organization ID",
-                        "name": "X-Organization-ID",
+                        "name": "X-Workspace-ID",
                         "in": "header",
                         "required": true
                     }
@@ -2244,7 +1845,7 @@ const docTemplate = `{
         },
         "/ready": {
             "get": {
-                "description": "Checks database connectivity. Returns 200 when DB is reachable, 503 when not. Used for load balancer readiness probes.",
+                "description": "Checks database connectivity. Returns 200 when DB is reachable, 503 when not.",
                 "produces": [
                     "application/json"
                 ],
@@ -2631,7 +2232,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Organization ID",
-                        "name": "X-Organization-ID",
+                        "name": "X-Workspace-ID",
                         "in": "header",
                         "required": true
                     }
@@ -2795,7 +2396,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/organizations.TierPlanWithLimits"
+                                                "$ref": "#/definitions/workspaces.TierPlanWithLimits"
                                             }
                                         }
                                     }
@@ -2819,7 +2420,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get the authenticated user's tier information including usage statistics.",
+                "description": "Get the authenticated user's tier information for the active workspace including usage statistics.",
                 "produces": [
                     "application/json"
                 ],
@@ -2839,7 +2440,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/organizations.TierInfoResponse"
+                                            "$ref": "#/definitions/workspaces.TierInfoResponse"
                                         }
                                     }
                                 }
@@ -2854,6 +2455,412 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Failed to fetch tier info",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve a list of all workspaces the authenticated user belongs to.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workspaces"
+                ],
+                "summary": "Get user workspaces",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/workspaces.Workspace"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to fetch workspaces",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new workspace. The requesting user automatically becomes the owner.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workspaces"
+                ],
+                "summary": "Create workspace",
+                "parameters": [
+                    {
+                        "description": "Workspace payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/workspaces.CreateWorkspaceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Workspace created successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/workspaces.Workspace"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to create workspace",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/invitations": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve all pending invitations for the workspace. Requires owner or admin role.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Invitations"
+                ],
+                "summary": "List pending invitations",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/workspaces.WorkspaceInvitation"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Missing workspace header",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permission",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to fetch invitations",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/invite": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Send an invitation email to add a new member to the workspace. Requires owner or admin role.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workspaces"
+                ],
+                "summary": "Invite a member",
+                "parameters": [
+                    {
+                        "description": "Invitation payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/workspaces.InviteMemberRequest"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Member added successfully",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error or invitation failed",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permission",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/members": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve all members of the workspace with their roles.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workspaces"
+                ],
+                "summary": "Get workspace members",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Missing workspace header",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to fetch members",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/members/{user_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Remove a member from the workspace. Requires owner or admin role. Owner cannot be removed.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workspaces"
+                ],
+                "summary": "Remove a member",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID to remove",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Member removed successfully",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid user ID format",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permission or cannot remove owner",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update a member's role within the workspace. Requires owner or admin role. Cannot change owner's role.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workspaces"
+                ],
+                "summary": "Update member role",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID to update",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Role update payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/workspaces.UpdateMemberRoleRequest"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Role updated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid role or user ID",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permission or cannot change owner role",
                         "schema": {
                             "$ref": "#/definitions/utils.APIResponse"
                         }
@@ -2959,13 +2966,13 @@ const docTemplate = `{
                 }
             }
         },
-        "auth.SwitchOrganizationRequest": {
+        "auth.SwitchWorkspaceRequest": {
             "type": "object",
             "required": [
-                "organization_id"
+                "workspace_id"
             ],
             "properties": {
-                "organization_id": {
+                "workspace_id": {
                     "type": "integer",
                     "example": 1
                 }
@@ -2985,6 +2992,50 @@ const docTemplate = `{
                 "phone": {
                     "type": "string",
                     "example": "+628123456789"
+                }
+            }
+        },
+        "clients.Client": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "company": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "total_revenue": {
+                    "type": "number"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "website": {
+                    "type": "string"
+                },
+                "whatsapp": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "integer"
                 }
             }
         },
@@ -3195,330 +3246,16 @@ const docTemplate = `{
                 }
             }
         },
-        "organizations.AcceptInvitationRequest": {
-            "description": "Request body for accepting an organization invitation",
-            "type": "object",
-            "required": [
-                "token"
-            ],
-            "properties": {
-                "token": {
-                    "type": "string",
-                    "example": "550e8400-e29b-41d4-a716-446655440000"
-                }
-            }
-        },
-        "organizations.ActivateTierRequest": {
-            "description": "Request body for activating a tier for a user",
-            "type": "object",
-            "required": [
-                "duration_months",
-                "tier"
-            ],
-            "properties": {
-                "duration_months": {
-                    "type": "integer",
-                    "maximum": 24,
-                    "minimum": 1,
-                    "example": 12
-                },
-                "tier": {
-                    "type": "string",
-                    "example": "pro"
-                }
-            }
-        },
-        "organizations.ActivateTierResult": {
-            "type": "object",
-            "properties": {
-                "affected_organizations": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "tier": {
-                    "type": "string"
-                },
-                "tier_activated_at": {
-                    "type": "string"
-                },
-                "tier_expires_at": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "organizations.CreateOrgRequest": {
-            "description": "Request body for organization creation",
+        "projects.CreateProjectRequest": {
             "type": "object",
             "required": [
                 "name"
             ],
             "properties": {
-                "name": {
-                    "type": "string",
-                    "example": "My Organization"
-                }
-            }
-        },
-        "organizations.Features": {
-            "type": "object",
-            "properties": {
-                "audit_log": {
-                    "type": "boolean"
-                },
-                "comments": {
-                    "type": "boolean"
-                },
-                "realtime": {
-                    "type": "boolean"
-                }
-            }
-        },
-        "organizations.InviteMemberRequest": {
-            "description": "Request body for inviting a member to organization",
-            "type": "object",
-            "required": [
-                "email"
-            ],
-            "properties": {
-                "email": {
-                    "type": "string",
-                    "example": "member@example.com"
-                }
-            }
-        },
-        "organizations.LimitsInfo": {
-            "type": "object",
-            "properties": {
-                "max_clients": {
-                    "type": "integer"
-                },
-                "max_invoices_per_month": {
-                    "type": "integer"
-                },
-                "max_members_per_workspace": {
-                    "type": "integer"
-                },
-                "max_projects_per_workspace": {
-                    "type": "integer"
-                },
-                "max_tasks_per_project": {
-                    "type": "integer"
-                },
-                "max_workspaces": {
-                    "type": "integer"
-                }
-            }
-        },
-        "organizations.Organization": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "org_type": {
-                    "type": "string"
-                },
-                "owner_id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "organizations.OrganizationInvitation": {
-            "type": "object",
-            "properties": {
-                "accepted_at": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "created_by": {
-                    "type": "integer"
-                },
-                "expires_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "invited_email": {
-                    "type": "string"
-                },
-                "org_id": {
-                    "type": "integer"
-                },
-                "role": {
-                    "type": "string"
-                },
-                "status": {
-                    "description": "pending, accepted, expired, revoked",
-                    "type": "string"
-                },
-                "token": {
-                    "type": "string"
-                }
-            }
-        },
-        "organizations.ResendInvitationRequest": {
-            "description": "Request body for resending an invitation",
-            "type": "object",
-            "required": [
-                "invitation_id"
-            ],
-            "properties": {
-                "invitation_id": {
+                "client_id": {
                     "type": "integer",
                     "example": 1
-                }
-            }
-        },
-        "organizations.TierInfoResponse": {
-            "type": "object",
-            "properties": {
-                "activated_at": {
-                    "type": "string"
                 },
-                "days_remaining": {
-                    "type": "integer"
-                },
-                "effective_tier": {
-                    "type": "string"
-                },
-                "expires_at": {
-                    "type": "string"
-                },
-                "features": {
-                    "$ref": "#/definitions/organizations.Features"
-                },
-                "is_active": {
-                    "type": "boolean"
-                },
-                "limits": {
-                    "$ref": "#/definitions/organizations.LimitsInfo"
-                },
-                "tier": {
-                    "type": "string"
-                },
-                "usage": {
-                    "$ref": "#/definitions/organizations.UsageInfo"
-                }
-            }
-        },
-        "organizations.TierLimit": {
-            "type": "object",
-            "properties": {
-                "can_audit_log": {
-                    "type": "boolean"
-                },
-                "can_comment": {
-                    "type": "boolean"
-                },
-                "can_sse": {
-                    "type": "boolean"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "max_clients": {
-                    "type": "integer"
-                },
-                "max_invoices_per_month": {
-                    "type": "integer"
-                },
-                "max_members": {
-                    "type": "integer"
-                },
-                "max_projects": {
-                    "type": "integer"
-                },
-                "max_tasks_per_project": {
-                    "type": "integer"
-                },
-                "max_workspaces": {
-                    "type": "integer"
-                },
-                "tier": {
-                    "type": "string"
-                }
-            }
-        },
-        "organizations.TierPlanWithLimits": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "features": {
-                    "$ref": "#/definitions/organizations.Features"
-                },
-                "limits": {
-                    "$ref": "#/definitions/organizations.TierLimit"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "price_monthly": {
-                    "type": "integer"
-                },
-                "price_yearly": {
-                    "type": "integer"
-                },
-                "tier": {
-                    "type": "string"
-                }
-            }
-        },
-        "organizations.UpdateMemberRoleRequest": {
-            "description": "Request body for updating member role",
-            "type": "object",
-            "required": [
-                "role"
-            ],
-            "properties": {
-                "role": {
-                    "type": "string",
-                    "example": "admin"
-                }
-            }
-        },
-        "organizations.UsageInfo": {
-            "type": "object",
-            "properties": {
-                "clients": {
-                    "type": "integer"
-                },
-                "invoices_this_month": {
-                    "type": "integer"
-                },
-                "members": {
-                    "type": "integer"
-                },
-                "owned_workspaces": {
-                    "type": "integer"
-                },
-                "projects": {
-                    "type": "integer"
-                }
-            }
-        },
-        "projects.CreateProjectRequest": {
-            "description": "Request body for project creation",
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
                 "description": {
                     "type": "string",
                     "example": "Complete redesign of company website"
@@ -3526,6 +3263,34 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "Website Redesign"
+                },
+                "new_client": {
+                    "type": "object",
+                    "required": [
+                        "name"
+                    ],
+                    "properties": {
+                        "company": {
+                            "type": "string",
+                            "example": "PT Maju Jaya"
+                        },
+                        "email": {
+                            "type": "string",
+                            "example": "contact@majujaya.co.id"
+                        },
+                        "name": {
+                            "type": "string",
+                            "example": "PT Maju Jaya"
+                        },
+                        "phone": {
+                            "type": "string",
+                            "example": "+62 21 1234567"
+                        },
+                        "whatsapp": {
+                            "type": "string",
+                            "example": "6281234567890"
+                        }
+                    }
                 }
             }
         },
@@ -3534,6 +3299,12 @@ const docTemplate = `{
             "properties": {
                 "budget": {
                     "type": "number"
+                },
+                "client": {
+                    "$ref": "#/definitions/clients.Client"
+                },
+                "client_id": {
+                    "type": "integer"
                 },
                 "created_at": {
                     "type": "string"
@@ -3550,9 +3321,6 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
-                "organization_id": {
-                    "type": "integer"
-                },
                 "priority": {
                     "type": "string"
                 },
@@ -3563,9 +3331,12 @@ const docTemplate = `{
                     "$ref": "#/definitions/projects.ProjectStatus"
                 },
                 "status_id": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "version": {
+                    "type": "integer"
+                },
+                "workspace_id": {
                     "type": "integer"
                 }
             }
@@ -3577,7 +3348,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "name": {
                     "type": "string"
@@ -3585,12 +3356,15 @@ const docTemplate = `{
             }
         },
         "projects.UpdateProjectRequest": {
-            "description": "Request body for project update (all fields optional)",
             "type": "object",
             "properties": {
                 "budget": {
                     "type": "number",
                     "example": 5000000
+                },
+                "client_id": {
+                    "type": "integer",
+                    "example": 1
                 },
                 "deadline": {
                     "type": "string",
@@ -3617,8 +3391,8 @@ const docTemplate = `{
                     "example": "in_progress"
                 },
                 "status_id": {
-                    "type": "string",
-                    "example": "uuid-string"
+                    "type": "integer",
+                    "example": 1
                 }
             }
         },
@@ -3905,6 +3679,326 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "workspaces.AcceptInvitationRequest": {
+            "type": "object",
+            "required": [
+                "token"
+            ],
+            "properties": {
+                "token": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            }
+        },
+        "workspaces.ActivateTierRequest": {
+            "type": "object",
+            "required": [
+                "duration_months",
+                "tier"
+            ],
+            "properties": {
+                "duration_months": {
+                    "type": "integer",
+                    "maximum": 24,
+                    "minimum": 1,
+                    "example": 12
+                },
+                "tier": {
+                    "type": "string",
+                    "example": "starter"
+                }
+            }
+        },
+        "workspaces.ActivateTierResult": {
+            "type": "object",
+            "properties": {
+                "tier": {
+                    "type": "string"
+                },
+                "tier_activated_at": {
+                    "type": "string"
+                },
+                "tier_expires_at": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "integer"
+                },
+                "workspace_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "workspaces.CreateWorkspaceRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "My Workspace"
+                }
+            }
+        },
+        "workspaces.Features": {
+            "type": "object",
+            "properties": {
+                "audit_log": {
+                    "type": "boolean"
+                },
+                "comments": {
+                    "type": "boolean"
+                },
+                "realtime": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "workspaces.InviteMemberRequest": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "member@example.com"
+                }
+            }
+        },
+        "workspaces.LimitsInfo": {
+            "type": "object",
+            "properties": {
+                "max_clients": {
+                    "type": "integer"
+                },
+                "max_invoices_per_month": {
+                    "type": "integer"
+                },
+                "max_members_per_workspace": {
+                    "type": "integer"
+                },
+                "max_projects_per_workspace": {
+                    "type": "integer"
+                },
+                "max_tasks_per_project": {
+                    "type": "integer"
+                },
+                "max_workspaces": {
+                    "type": "integer"
+                }
+            }
+        },
+        "workspaces.ResendInvitationRequest": {
+            "type": "object",
+            "required": [
+                "invitation_id"
+            ],
+            "properties": {
+                "invitation_id": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "workspaces.TierInfoResponse": {
+            "type": "object",
+            "properties": {
+                "activated_at": {
+                    "type": "string"
+                },
+                "days_remaining": {
+                    "type": "integer"
+                },
+                "effective_tier": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "features": {
+                    "$ref": "#/definitions/workspaces.Features"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "limits": {
+                    "$ref": "#/definitions/workspaces.LimitsInfo"
+                },
+                "tier": {
+                    "type": "string"
+                },
+                "usage": {
+                    "$ref": "#/definitions/workspaces.UsageInfo"
+                }
+            }
+        },
+        "workspaces.TierLimit": {
+            "type": "object",
+            "properties": {
+                "can_audit_log": {
+                    "type": "boolean"
+                },
+                "can_comment": {
+                    "type": "boolean"
+                },
+                "can_sse": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "max_clients": {
+                    "type": "integer"
+                },
+                "max_invoices_per_month": {
+                    "type": "integer"
+                },
+                "max_members": {
+                    "type": "integer"
+                },
+                "max_projects": {
+                    "type": "integer"
+                },
+                "max_tasks_per_project": {
+                    "type": "integer"
+                },
+                "max_workspaces": {
+                    "type": "integer"
+                },
+                "tier": {
+                    "type": "string"
+                }
+            }
+        },
+        "workspaces.TierPlanWithLimits": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "features": {
+                    "$ref": "#/definitions/workspaces.Features"
+                },
+                "limits": {
+                    "$ref": "#/definitions/workspaces.TierLimit"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "price_monthly": {
+                    "type": "integer"
+                },
+                "price_yearly": {
+                    "type": "integer"
+                },
+                "tier": {
+                    "type": "string"
+                }
+            }
+        },
+        "workspaces.UpdateMemberRoleRequest": {
+            "type": "object",
+            "required": [
+                "role"
+            ],
+            "properties": {
+                "role": {
+                    "type": "string",
+                    "example": "admin"
+                }
+            }
+        },
+        "workspaces.UsageInfo": {
+            "type": "object",
+            "properties": {
+                "clients": {
+                    "type": "integer"
+                },
+                "invoices_this_month": {
+                    "type": "integer"
+                },
+                "members": {
+                    "type": "integer"
+                },
+                "owned_workspaces": {
+                    "type": "integer"
+                },
+                "projects": {
+                    "type": "integer"
+                }
+            }
+        },
+        "workspaces.Workspace": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "owner_id": {
+                    "type": "integer"
+                },
+                "tier": {
+                    "type": "string"
+                },
+                "tier_activated_at": {
+                    "type": "string"
+                },
+                "tier_activated_by": {
+                    "type": "integer"
+                },
+                "tier_expires_at": {
+                    "type": "string"
+                },
+                "workspace_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "workspaces.WorkspaceInvitation": {
+            "type": "object",
+            "properties": {
+                "accepted_at": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "type": "integer"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "invited_email": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "pending, accepted, expired, revoked",
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "integer"
+                }
+            }
         }
     },
     "securityDefinitions": {
@@ -3924,7 +4018,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/",
 	Schemes:          []string{"https"},
 	Title:            "GoTask API",
-	Description:      "Task Management RESTful API Backend with authentication, organizations, projects, tasks, statuses, and labels management.",
+	Description:      "Task Management RESTful API Backend with authentication, workspaces, projects, tasks, statuses, and labels management.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

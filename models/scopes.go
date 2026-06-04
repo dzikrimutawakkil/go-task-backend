@@ -2,10 +2,11 @@ package models
 
 import "gorm.io/gorm"
 
-// ByOrg is a reusable filter for any table that has an 'organization_id' column
-func ByOrg(orgID string) func(db *gorm.DB) *gorm.DB {
+// ByWorkspace is a reusable filter for any table that has a 'workspace_id' column.
+// M-MIGRATION: Renamed from ByOrg to ByWorkspace.
+func ByWorkspace(workspaceID string) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
-		return db.Where("organization_id = ?", orgID)
+		return db.Where("workspace_id = ?", workspaceID)
 	}
 }
 

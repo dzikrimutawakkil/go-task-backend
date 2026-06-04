@@ -4,15 +4,16 @@ import (
 	"gorm.io/gorm"
 )
 
+// M-MIGRATION: Updated interface to use workspace instead of organization
 type ClientRepository interface {
-	FindAllByOrg(orgID string) ([]Client, error)
+	FindAllByWorkspace(workspaceID string) ([]Client, error)
 	FindByID(id uint) (*Client, error)
 	Create(client *Client) error
 	Update(client *Client) error
 	Delete(client *Client) error
 	UpdateRevenue(clientID uint, amount float64) error
-	CountByOrg(orgID string) (int64, error)
-	SumRevenueByOrg(orgID string) (float64, error)
+	CountByWorkspace(workspaceID string) (int64, error)
+	SumRevenueByWorkspace(workspaceID string) (float64, error)
 }
 
 type clientRepository struct {
@@ -23,9 +24,10 @@ func NewClientRepository(db *gorm.DB) ClientRepository {
 	return &clientRepository{db}
 }
 
-func (r *clientRepository) FindAllByOrg(orgID string) ([]Client, error) {
+// M-MIGRATION: Renamed from FindAllByOrg to FindAllByWorkspace
+func (r *clientRepository) FindAllByWorkspace(workspaceID string) ([]Client, error) {
 	var clients []Client
-	err := r.db.Where("organization_id = ?", orgID).
+	err := r.db.Where("workspace_id = ?", workspaceID).
 		Order("created_at DESC").
 		Find(&clients).Error
 	return clients, err
@@ -57,16 +59,18 @@ func (r *clientRepository) UpdateRevenue(clientID uint, amount float64) error {
 		UpdateColumn("total_revenue", gorm.Expr("total_revenue + ?", amount)).Error
 }
 
-func (r *clientRepository) CountByOrg(orgID string) (int64, error) {
+// M-MIGRATION: Renamed from CountByOrg to CountByWorkspace
+func (r *clientRepository) CountByWorkspace(workspaceID string) (int64, error) {
 	var count int64
-	err := r.db.Model(&Client{}).Where("organization_id = ?", orgID).Count(&count).Error
+	err := r.db.Model(&Client{}).Where("workspace_id = ?", workspaceID).Count(&count).Error
 	return count, err
 }
 
-func (r *clientRepository) SumRevenueByOrg(orgID string) (float64, error) {
+// M-MIGRATION: Renamed from SumRevenueByOrg to SumRevenueByWorkspace
+func (r *clientRepository) SumRevenueByWorkspace(workspaceID string) (float64, error) {
 	var sum float64
 	err := r.db.Model(&Client{}).
-		Where("organization_id = ?", orgID).
+		Where("workspace_id = ?", workspaceID).
 		Select("COALESCE(SUM(total_revenue), 0)").
 		Scan(&sum).Error
 	return sum, err

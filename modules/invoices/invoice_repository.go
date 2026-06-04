@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"gotask-backend/modules/clients"
+	"gotask-backend/utils"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -16,8 +17,9 @@ var (
 	ErrInvoiceAlreadyPaid = errors.New("invoice is already paid")
 )
 
+// M-MIGRATION: Updated interface to use workspace instead of organization
 type InvoiceRepository interface {
-	FindAllByOrg(orgID string) ([]Invoice, error)
+	FindAllByWorkspace(workspaceID string) ([]Invoice, error)
 	FindByID(id uint) (*Invoice, error)
 	FindByInvoiceNumber(number string) (*Invoice, error)
 	Create(invoice *Invoice) error
@@ -27,7 +29,7 @@ type InvoiceRepository interface {
 	MarkAsPaidAndSyncRevenue(invoiceID uint, clientID uint, amountPaid float64, paidAt *string) (*Invoice, error)
 
 	// M5: Quota check helpers
-	CountThisMonth(orgID string) (int, error)
+	CountThisMonth(workspaceID string) (int, error)
 }
 
 type invoiceRepository struct {
@@ -38,12 +40,56 @@ func NewInvoiceRepository(db *gorm.DB) InvoiceRepository {
 	return &invoiceRepository{db: db}
 }
 
-func (r *invoiceRepository) FindAllByOrg(orgID string) ([]Invoice, error) {
+// M-MIGRATION: Renamed from FindAllByOrg to FindAllByWorkspace
+func (r *invoiceRepository) FindAllByWorkspace(workspaceID string) ([]Invoice, error) {
 	var invoices []Invoice
-	err := r.db.Where("organization_id = ?", orgID).
-		Order("created_at DESC").
-		Find(&invoices).Error
-	return invoices, err
+
+	// Use Raw SQL to avoid GORM automatic scanning issues with JSONB
+	// This explicitly handles the items JSONB column
+	rows, err := r.db.Raw(`
+		SELECT id, workspace_id, invoice_number, client_id, project_id, title,
+		       amount, tax, discount, amount_paid, status, due_date, paid_at,
+		       notes, version, created_at, updated_at
+		FROM invoices
+		WHERE workspace_id = ?
+		ORDER BY created_at DESC
+	`, workspaceID).Rows()
+	if err != nil {
+		utils.GetLogger().Error("FindAllByWorkspace query failed", "error", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var inv Invoice
+		var clientID, projectID *uint
+		var title, notes *string
+		var dueDate, paidAt *time.Time
+
+		err := rows.Scan(
+			&inv.ID, &inv.WorkspaceID, &inv.InvoiceNumber, &clientID, &projectID,
+			&title, &inv.Amount, &inv.Tax, &inv.Discount, &inv.AmountPaid,
+			&inv.Status, &dueDate, &paidAt, &notes, &inv.Version,
+			&inv.CreatedAt, &inv.UpdatedAt,
+		)
+		if err != nil {
+			utils.GetLogger().Error("Row scan failed", "error", err)
+			continue
+		}
+		inv.ClientID = clientID
+		inv.ProjectID = projectID
+		inv.Title = title
+		inv.Notes = notes
+		inv.DueDate = dueDate
+		inv.PaidAt = paidAt
+
+		// Items JSONB column is handled by GORM for create/update operations
+		// For list queries, items are left as nil (parsed separately when needed)
+
+		invoices = append(invoices, inv)
+	}
+
+	return invoices, nil
 }
 
 func (r *invoiceRepository) FindByID(id uint) (*Invoice, error) {
@@ -126,15 +172,16 @@ func (r *invoiceRepository) MarkAsPaidAndSyncRevenue(invoiceID uint, clientID ui
 	return &invoice, err
 }
 
-// CountThisMonth returns the number of invoices created this month for an organization.
+// CountThisMonth returns the number of invoices created this month for a workspace.
 // M5: Subscription Tiers — Phase 5: Service Layer — Quota check for invoice limit.
-func (r *invoiceRepository) CountThisMonth(orgID string) (int, error) {
+// M-MIGRATION: Renamed from CountThisMonth
+func (r *invoiceRepository) CountThisMonth(workspaceID string) (int, error) {
 	now := time.Now()
 	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
 
 	var count int64
 	err := r.db.Model(&Invoice{}).
-		Where("organization_id = ? AND created_at >= ?", orgID, monthStart).
+		Where("workspace_id = ? AND created_at >= ?", workspaceID, monthStart).
 		Count(&count).Error
 	return int(count), err
 }

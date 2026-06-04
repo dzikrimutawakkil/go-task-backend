@@ -43,16 +43,17 @@ type taskService struct {
 	repo        TaskRepository
 	authService interfaces.AuthService
 	labelRepo   LabelRepository
-	orgRepo     interfaces.OrgFinder
+	wsFinder    interfaces.WorkspaceFinder
 }
 
-// M5: Subscription Tiers — uses interfaces.AuthService to avoid import cycles.
-func NewTaskService(repo TaskRepository, authS interfaces.AuthService, labelRepo LabelRepository, orgRepo interfaces.OrgFinder) TaskService {
+// M5: Subscription Tiers — uses interfaces.WorkspaceFinder to avoid import cycles.
+// M-MIGRATION: Gets tier from workspace, not owner user.
+func NewTaskService(repo TaskRepository, authS interfaces.AuthService, labelRepo LabelRepository, wsFinder interfaces.WorkspaceFinder) TaskService {
 	return &taskService{
 		repo:        repo,
 		authService: authS,
 		labelRepo:   labelRepo,
-		orgRepo:     orgRepo,
+		wsFinder:    wsFinder,
 	}
 }
 
@@ -87,17 +88,16 @@ func (s *taskService) CreateTask(input CreateTaskInput) (*Task, error) {
 		input.PriorityID = 2 // Assuming ID 2 is "Medium"
 	}
 
-	// M5: Quota check — check task limit based on org owner's tier
+	// M5: Quota check — check task limit based on workspace tier
+	// M-MIGRATION: Tier is now on workspace, not owner user.
 	effectiveTier := "free"
 	limits := utils.GetTierLimits("free")
 
-	// Get org ID from project, then find owner
-	if orgID, err := s.repo.GetProjectOrgID(strconv.FormatUint(uint64(input.ProjectID), 10)); err == nil {
-		if orgInfo, err := s.orgRepo.FindOrgInfoByID(orgID); err == nil {
-			if owner, err := s.authService.FindByID(orgInfo.OwnerID); err == nil {
-				effectiveTier = utils.GetEffectiveTier(owner.Tier, owner.TierExpiresAt)
-				limits = utils.GetTierLimits(effectiveTier)
-			}
+	// Get workspace ID from project, then get workspace tier
+	if workspaceID, err := s.repo.GetProjectOrgID(strconv.FormatUint(uint64(input.ProjectID), 10)); err == nil {
+		if wsInfo, err := s.wsFinder.FindWorkspaceInfoByID(workspaceID); err == nil {
+			effectiveTier = utils.GetEffectiveTier(wsInfo.Tier, wsInfo.TierExpiresAt)
+			limits = utils.GetTierLimits(effectiveTier)
 		}
 	}
 

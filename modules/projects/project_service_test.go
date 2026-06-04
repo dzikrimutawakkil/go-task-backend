@@ -7,23 +7,23 @@ import (
 func TestCreateProjectInput(t *testing.T) {
 	t.Run("required fields", func(t *testing.T) {
 		input := CreateProjectInput{
-			Name:           "Test Project",
-			Description:    "A test project description",
-			OrganizationID: 1,
+			Name:        "Test Project",
+			Description: "A test project description",
+			WorkspaceID: 1,
 		}
 
 		if input.Name == "" {
 			t.Errorf("CreateProjectInput should have Name")
 		}
-		if input.OrganizationID == 0 {
-			t.Errorf("CreateProjectInput should have OrganizationID")
+		if input.WorkspaceID == 0 {
+			t.Errorf("CreateProjectInput should have WorkspaceID")
 		}
 	})
 
 	t.Run("description is optional", func(t *testing.T) {
 		input := CreateProjectInput{
-			Name:           "Minimal Project",
-			OrganizationID: 1,
+			Name:        "Minimal Project",
+			WorkspaceID: 1,
 		}
 
 		if input.Name == "" {
@@ -35,10 +35,10 @@ func TestCreateProjectInput(t *testing.T) {
 func TestProjectModel(t *testing.T) {
 	t.Run("project should have required fields", func(t *testing.T) {
 		project := Project{
-			ID:             1,
-			Name:           "Test Project",
-			Description:    "Description",
-			OrganizationID: 1,
+			ID:          1,
+			Name:        "Test Project",
+			Description: "Description",
+			WorkspaceID: 1,
 		}
 
 		if project.ID == 0 {
@@ -47,8 +47,8 @@ func TestProjectModel(t *testing.T) {
 		if project.Name == "" {
 			t.Errorf("Project should have Name")
 		}
-		if project.OrganizationID == 0 {
-			t.Errorf("Project should have OrganizationID")
+		if project.WorkspaceID == 0 {
+			t.Errorf("Project should have WorkspaceID")
 		}
 	})
 
@@ -131,26 +131,26 @@ func TestOrganizationProjectRelationship(t *testing.T) {
 	t.Run("project should belong to organization", func(t *testing.T) {
 		orgID := uint(1)
 		project := Project{
-			Name:           "Test Project",
-			OrganizationID: orgID,
+			Name:        "Test Project",
+			WorkspaceID: orgID,
 		}
 
-		if project.OrganizationID != orgID {
+		if project.WorkspaceID != orgID {
 			t.Errorf("Project should belong to organization %d, got %d",
-				orgID, project.OrganizationID)
+				orgID, project.WorkspaceID)
 		}
 	})
 
 	t.Run("multiple projects per organization", func(t *testing.T) {
 		orgID := uint(1)
 		projects := []Project{
-			{Name: "Project 1", OrganizationID: orgID},
-			{Name: "Project 2", OrganizationID: orgID},
-			{Name: "Project 3", OrganizationID: orgID},
+			{Name: "Project 1", WorkspaceID: orgID},
+			{Name: "Project 2", WorkspaceID: orgID},
+			{Name: "Project 3", WorkspaceID: orgID},
 		}
 
 		for _, p := range projects {
-			if p.OrganizationID != orgID {
+			if p.WorkspaceID != orgID {
 				t.Errorf("All projects should belong to organization %d", orgID)
 			}
 		}

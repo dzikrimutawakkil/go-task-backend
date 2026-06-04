@@ -26,11 +26,12 @@
 ```
 modules/
 ├── auth/              # Authentication (signup, login, token, password reset)
-├── organizations/      # Organization management + tier plans + invitations
-├── projects/          # Project CRUD + labels
-├── tasks/             # Task, status, priority, labels
-├── clients/           # Client management + stats
-└── invoices/          # Invoice + billing + revenue sync
+├── workspaces/         # Workspace management + tier plans + invitations
+├── projects/           # Project CRUD + client link
+├── tasks/              # Task, status, priority, labels
+├── clients/            # Client management + stats
+├── invoices/           # Invoice + billing + revenue sync
+└── health/             # Health check handlers
 ```
 
 ### Layer Pattern: Handler → Service → Repository
@@ -63,7 +64,7 @@ Token disimpan di header: `Authorization: Bearer <token>`
 ### Middleware Chain
 
 ```
-Request → CORSMiddleware → EnsureJSON → RateLimiter → RequireAuth → Handler
+Request → RequestID → StructuredLogger → CORS → EnsureJSON → RateLimiter → RequireAuth → Handler
 ```
 
 ### RequireAuth Middleware
@@ -71,10 +72,12 @@ Request → CORSMiddleware → EnsureJSON → RateLimiter → RequireAuth → Ha
 1. Parse JWT token dari header
 2. Validasi token expiry
 3. Load user dari database
-4. Resolve organization context (dari `X-Organization-ID` header atau personal workspace)
+4. Resolve workspace context:
+   - Jika `X-Workspace-ID` header ada → validasi membership
+   - Jika tidak ada → auto-resolve ke personal workspace user
 5. Set `c.Set("user", minimalUser)`
-6. Set `c.Set("org_id", orgID)`
-7. Inject `tier_info` ke response context
+6. Set `c.Set("workspace_id", workspaceID)`
+7. Berikan tier_info di setiap response
 
 ---
 
@@ -83,7 +86,7 @@ Request → CORSMiddleware → EnsureJSON → RateLimiter → RequireAuth → Ha
 ### Core Tables
 
 ```sql
--- Users (with tier)
+-- Users
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     email VARCHAR(100) UNIQUE,
@@ -91,7 +94,17 @@ CREATE TABLE users (
     name VARCHAR(100),
     phone VARCHAR(20),
     address TEXT,
-    tier VARCHAR(20) DEFAULT 'free',          -- free, pro, ultimate
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Workspaces (formerly Organizations)
+CREATE TABLE workspaces (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    owner_id BIGINT REFERENCES users(id),
+    workspace_type VARCHAR(20) DEFAULT 'personal',  -- personal, team
+    tier VARCHAR(20) DEFAULT 'free',                 -- free, pro, ultimate
     tier_expires_at TIMESTAMP WITH TIME ZONE,
     tier_activated_at TIMESTAMP WITH TIME ZONE,
     tier_activated_by BIGINT REFERENCES users(id),
@@ -99,24 +112,14 @@ CREATE TABLE users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Organizations (Workspaces)
-CREATE TABLE organizations (
+-- workspace_members (formerly organization_users)
+CREATE TABLE workspace_members (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(100),
-    owner_id BIGINT REFERENCES users(id),
-    org_type VARCHAR(20) DEFAULT 'personal',  -- personal, team
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- organization_users (Membership)
-CREATE TABLE organization_users (
-    id SERIAL PRIMARY KEY,
-    organization_id BIGINT REFERENCES organizations(id),
+    workspace_id BIGINT REFERENCES workspaces(id),
     user_id BIGINT REFERENCES users(id),
     role VARCHAR(20), -- owner, admin, member
     joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(organization_id, user_id)
+    UNIQUE(workspace_id, user_id)
 );
 
 -- project_statuses (Q19)
@@ -133,7 +136,8 @@ CREATE TABLE projects (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100),
     description TEXT,
-    organization_id BIGINT REFERENCES organizations(id),
+    workspace_id BIGINT REFERENCES workspaces(id),
+    client_id BIGINT REFERENCES clients(id) ON DELETE SET NULL,
     priority VARCHAR(20) DEFAULT 'medium',
     progress BIGINT DEFAULT 0,
     budget DECIMAL,
@@ -150,6 +154,7 @@ CREATE TABLE tasks (
     title VARCHAR(200),
     description TEXT,
     project_id BIGINT REFERENCES projects(id),
+    workspace_id BIGINT REFERENCES workspaces(id),
     status_id INT REFERENCES statuses(id),
     priority_id INT REFERENCES priorities(id),
     version INT DEFAULT 1,
@@ -207,8 +212,11 @@ CREATE TABLE clients (
     phone VARCHAR(20),
     whatsapp VARCHAR(20),
     company VARCHAR(100),
+    website VARCHAR(255),
+    address TEXT,
+    notes TEXT,
     total_revenue DECIMAL DEFAULT 0,
-    organization_id BIGINT REFERENCES organizations(id),
+    workspace_id BIGINT REFERENCES workspaces(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -216,14 +224,21 @@ CREATE TABLE clients (
 -- invoices
 CREATE TABLE invoices (
     id SERIAL PRIMARY KEY,
-    client_id BIGINT REFERENCES clients(id),
-    organization_id BIGINT REFERENCES organizations(id),
-    amount DECIMAL,
-    amount_paid DECIMAL,
-    status VARCHAR(20) DEFAULT 'sent', -- sent, paid, cancelled
-    invoice_number VARCHAR(20), -- auto-generated: INV-YYYY-XXX
+    workspace_id BIGINT REFERENCES workspaces(id),
+    client_id BIGINT REFERENCES clients(id) ON DELETE SET NULL,
+    project_id BIGINT REFERENCES projects(id) ON DELETE SET NULL,
+    invoice_number VARCHAR(50) UNIQUE,
+    title VARCHAR(255),
+    amount DECIMAL(15,2) NOT NULL DEFAULT 0,
+    tax DECIMAL(15,2) DEFAULT 0,
+    discount DECIMAL(15,2) DEFAULT 0,
+    amount_paid DECIMAL(15,2) DEFAULT 0,
+    status VARCHAR(20) DEFAULT 'draft', -- draft, sent, paid, cancelled
+    due_date TIMESTAMP WITH TIME ZONE,
     paid_at TIMESTAMP WITH TIME ZONE,
     notes TEXT,
+    items JSONB,
+    version INT DEFAULT 1,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -231,7 +246,7 @@ CREATE TABLE invoices (
 -- invitations
 CREATE TABLE invitations (
     id SERIAL PRIMARY KEY,
-    organization_id BIGINT REFERENCES organizations(id),
+    workspace_id BIGINT REFERENCES workspaces(id),
     email VARCHAR(100),
     role VARCHAR(20),
     token VARCHAR(100) UNIQUE,
@@ -251,7 +266,7 @@ CREATE TABLE password_reset_tokens (
 -- tier_plans (M5)
 CREATE TABLE tier_plans (
     id SERIAL PRIMARY KEY,
-    tier VARCHAR(20) NOT NULL UNIQUE,
+    tier VARCHAR(20) NOT NULL UNIQUE, -- free, pro, ultimate
     name VARCHAR(50) NOT NULL,
     description TEXT,
     price_monthly INTEGER NOT NULL DEFAULT 0,
@@ -297,24 +312,26 @@ CREATE TABLE tier_limits (
 
 ### Protected Endpoints (JWT Required)
 
+> **Note:** Semua endpoint dilindungi middleware `RequireAuth`. Jika header `X-Workspace-ID` tidak diberikan, sistem otomatis menggunakan personal workspace user.
+
 #### Auth & Profile
 | Method | Endpoint | Description |
 |---|---|---|
 | GET | `/api/auth/me` | Get current user profile |
-| PATCH | `/api/users/me` | Update profile |
+| PATCH | `/api/users/me` | Update profile (name, phone, address) |
 | PATCH | `/api/users/me/password` | Change password |
-| POST | `/api/users/me/switch-organization` | Switch active workspace |
-| GET | `/api/users/me/tier` | Get tier info + usage + limits |
+| POST | `/api/users/me/switch-workspace` | Switch active workspace |
+| GET | `/users/me/tier` | Get tier info + usage + limits |
 
 #### Projects
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/projects` | List projects |
+| GET | `/projects` | List projects (includes `project_status`) |
 | POST | `/projects` | Create project (auto-generate labels + status) |
-| GET | `/projects/:id` | Get project (includes project_status) |
-| PATCH | `/projects/:id` | Update project (update status_id) |
+| GET | `/projects/:id` | Get project (includes `project_status` and `client`) |
+| PATCH | `/projects/:id` | Update project (update status_id, client_id) |
 | DELETE | `/projects/:id` | Delete project |
-| GET | `/projects/:id/labels` | Get project labels |
+| GET | `/projects/:id/labels` | Get project urgency labels |
 | POST | `/projects/:id/labels` | Create label |
 | PATCH | `/labels/:id` | Update label |
 | DELETE | `/labels/:id` | Delete label |
@@ -328,21 +345,20 @@ CREATE TABLE tier_limits (
 |---|---|---|
 | GET | `/projects/:id/tasks` | List tasks in project |
 | POST | `/tasks` | Create task |
-| GET | `/tasks/search` | Full-text search tasks |
+| GET | `/tasks/search` | Full-text search + filters (assignee, status, priority, date) |
 | PATCH | `/tasks/:id` | Update task |
 | DELETE | `/tasks/:id` | Delete task |
 
-#### Organizations
+#### Workspaces
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/organizations` | List user's organizations |
-| POST | `/organizations` | Create organization |
-| POST | `/organizations/invite` | Invite member |
-| GET | `/organizations/members` | List members |
-| PATCH | `/organizations/members/:id` | Update member role |
-| DELETE | `/organizations/members/:id` | Remove member |
-| GET | `/organizations/invitations` | List pending invitations |
-| POST | `/organizations/invitations/:id/resend` | Resend invitation email |
+| GET | `/workspaces` | List user's workspaces |
+| POST | `/workspaces` | Create workspace |
+| POST | `/workspaces/invite` | Invite member (email) |
+| GET | `/workspaces/members` | List members |
+| PATCH | `/workspaces/members/:user_id` | Update member role |
+| DELETE | `/workspaces/members/:user_id` | Remove member |
+| GET | `/workspaces/invitations` | List pending invitations |
 
 #### Clients & Invoices
 | Method | Endpoint | Description |
@@ -363,17 +379,18 @@ CREATE TABLE tier_limits (
 #### Admin
 | Method | Endpoint | Description |
 |---|---|---|
-| PATCH | `/api/admin/users/:id/tier` | Activate/extend user tier (admin only) |
+| PATCH | `/admin/workspaces/:id/tier` | Activate/extend workspace tier (admin only) |
 
 ---
 
 ## 🔑 Key Features
 
-### Subscription Tiers (M5)
-- Tier diikat ke **user** (bukan organisasi)
-- Semua organisasi milik user mewarisi tier yang sama
+### Subscription Tiers (Per Workspace)
+- Tier diikat ke **workspace** (bukan ke user)
+- User bisa punya workspace dengan tier berbeda
+- Semua member workspace mewarisi fitur sesuai tier workspace
 - Aktivasi manual oleh admin (tanpa Stripe/payment gateway)
-- Quota enforcement di service layer
+- Quota enforcement di service layer berdasarkan workspace tier
 
 ### Quota Enforcement
 Quota di-check sebelum operasi **Create**:
@@ -383,40 +400,49 @@ Quota di-check sebelum operasi **Create**:
 | Workspaces | 1 | 2 | 4 |
 | Projects per workspace | 3 | Unlimited | Unlimited |
 | Tasks per project | 50 | Unlimited | Unlimited |
-| Members per workspace | 1 | 3 | 15 |
+| Members per workspace | 1 | 5 | 15 |
 | Clients | 5 | Unlimited | Unlimited |
 | Invoices per bulan | 10 | Unlimited | Unlimited |
 
-Jika quota exceeded → HTTP 403 `quota exceeded: workspace limit is 1 on free tier. Please upgrade.`
+Jika quota exceeded → HTTP 403 `quota exceeded: project limit is 3 on free tier. Please upgrade.`
+
+### Client-Project Link
+- Project bisa linked ke sebuah client (opsional)
+- Create project: accept `client_id` atau `new_client` (inline create)
+- Update project: bisa ubah atau unlink `client_id`
+- Validasi: client harus milik workspace yang sama
 
 ### Tier Feature Gate
-Middleware `RequireTierFeature(feature)` blocking akses fitur berdasarkan tier:
+Middleware `RequireTierFeature(feature)` blocking akses fitur berdasarkan workspace tier:
 
 ```go
 // Route example
 tasks.POST("/:id/comments", RequireTierFeature("comment"), commentHandler.Create)
 ```
 
-### Q17: Tier Info
+### Tier Info Banner
 Middleware `RequireAuth` inject `tier_info` ke setiap response:
 
 ```json
 "tier_info": {
   "tier": "free",
+  "effective_tier": "free",
   "is_active": true,
   "expires_at": null,
   "days_remaining": 0,
-  "warning": "Upgrade untuk lebih banyak fitur."
+  "limits": { ... },
+  "features": { ... },
+  "usage": { ... }
 }
 ```
 
-### Q18: Auto-generate Urgency Labels
+### Auto-generate Urgency Labels
 Saat project dibuat, auto-create 3 urgency labels:
 - **Urgent** (red #EF4444) — harus selesai secepatnya
 - **Normal** (yellow #F59E0B) — prioritas standar
-- **Low** (blue #3B82F6) — bisa nanti
+- **Low** (green #22C55E) — bisa nanti
 
-### Q19: Project Status Workflow
+### Project Status Workflow
 Seed 4 project_statuses saat startup:
 - **Active** (green #22C55E) — DEFAULT
 - **On Hold** (amber #F59E0B)
@@ -426,14 +452,10 @@ Seed 4 project_statuses saat startup:
 Saat project dibuat, auto-generate 5 task statuses:
 - Todo, On Progress, Done, Pending, Cancel
 
-### M11: Workspace Switch
-- Endpoint: `POST /api/users/me/switch-organization`
-- Body: `{ "organization_id": 1 }`
+### Workspace Switch
+- Endpoint: `POST /api/users/me/switch-workspace`
+- Body: `{ "workspace_id": 1 }`
 - Validates membership before switching
-
-### M12: Project Status Workflow
-- `PATCH /projects/:id` accept `status_id` field
-- Response include `project_status` object (id, name, color)
 
 ---
 
@@ -444,14 +466,7 @@ Saat project dibuat, auto-generate 5 task statuses:
 {
   "success": true,
   "message": "Operation successful",
-  "data": { ... },
-  "tier_info": {
-    "tier": "pro",
-    "is_active": true,
-    "expires_at": "2027-05-28T00:00:00Z",
-    "days_remaining": 365,
-    "warning": null
-  }
+  "data": { ... }
 }
 ```
 
@@ -460,8 +475,7 @@ Saat project dibuat, auto-generate 5 task statuses:
 {
   "success": false,
   "message": "Error description",
-  "data": null,
-  "tier_info": { ... }
+  "data": null
 }
 ```
 
@@ -469,9 +483,8 @@ Saat project dibuat, auto-generate 5 task statuses:
 ```json
 {
   "success": false,
-  "message": "quota exceeded: workspace limit is 1 on free tier. Please upgrade.",
-  "data": null,
-  "tier_info": { ... }
+  "message": "quota exceeded: project limit is 3 on free tier. Please upgrade.",
+  "data": null
 }
 ```
 
@@ -483,10 +496,20 @@ Saat project dibuat, auto-generate 5 task statuses:
 Helper functions untuk tier management:
 
 ```go
-// GetTierLimits(tier string) → TierLimits struct
+// GetTierLimits(tier string) → TierLimits struct (free/pro/ultimate)
 // IsTierActive(tier string, expiresAt *time.Time) → bool
 // GetEffectiveTier(tier string, expiresAt *time.Time) → string (fallback to free if expired)
+// GetEffectiveTierFromString(tier string, tierExpiresAtStr *string) → string (DB string format)
 // ErrQuotaExceeded(resource, limit, tier) → *QuotaError
+// DaysRemaining(expiresAt *time.Time) → int
+```
+
+### utils/response.go
+Standard API response helpers:
+
+```go
+// SendSuccess(c, message, data)
+// SendError(c, statusCode, message)
 ```
 
 ---
@@ -534,6 +557,9 @@ SMTP_PORT=587
 SMTP_USER=email@gmail.com
 SMTP_PASSWORD=app-password
 SMTP_FROM=noreply@gotask.app
+
+# Logging
+LOG_LEVEL=debug
 ```
 
 ---
@@ -546,7 +572,8 @@ SMTP_FROM=noreply@gotask.app
 - CORS open di development, locked di production
 - No hardcoded secrets (always use env vars)
 - Optimistic locking via version column
-- Tier feature gate middleware
+- Tier feature gate middleware (per workspace)
+- Workspace membership validation on every protected request
 
 ---
 

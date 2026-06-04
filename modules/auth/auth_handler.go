@@ -3,10 +3,10 @@ package auth
 import (
 	"net/http"
 
+	"gotask-backend/models"
 	"gotask-backend/utils"
 
 	"github.com/gin-gonic/gin"
-	"gotask-backend/models"
 )
 
 // Request DTOs
@@ -43,10 +43,10 @@ type ChangePasswordRequest struct {
 	NewPassword     string `json:"new_password" binding:"required,min=8" example:"newpassword123"`
 }
 
-// SwitchOrganizationRequest represents the request body for switching active organization.
-// M11: Workspace Switch Endpoint
-type SwitchOrganizationRequest struct {
-	OrganizationID uint `json:"organization_id" binding:"required" example:"1"`
+// SwitchWorkspaceRequest represents the request body for switching active workspace.
+// M11: Workspace Switch Endpoint, M-MIGRATION: renamed from SwitchOrganizationRequest
+type SwitchWorkspaceRequest struct {
+	WorkspaceID uint `json:"workspace_id" binding:"required" example:"1"`
 }
 
 type AuthResponse struct {
@@ -106,6 +106,7 @@ func (h *Handler) Signup(c *gin.Context) {
 	utils.SendSuccess(c, "Signup successful", gin.H{
 		"user":  user,
 		"token": token,
+		"workspace_id": user.ID, // Workspace ID = owner ID (personal workspace)
 	})
 }
 
@@ -150,13 +151,6 @@ func (h *Handler) Login(c *gin.Context) {
 // Me godoc
 // @Summary     Get current user
 // @Description Returns the authenticated user's profile based on JWT token.
-// @Tags        Auth
-// @Accept      json
-// @Produce     json
-// @Security    BearerAuth
-// @Success     200 {object} utils.APIResponse "success"
-// @Failure     401 {object} utils.APIResponse "Unauthorized"
-// @Router      /api/auth/me [get]
 func (h *Handler) Me(c *gin.Context) {
 	user := c.MustGet("user").(models.MinimalUser)
 	utils.SendSuccess(c, "success", gin.H{
@@ -303,21 +297,21 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 	utils.SendSuccess(c, "Password changed successfully")
 }
 
-// SwitchOrganization godoc
-// @Summary     Switch active organization
-// @Description Switch the user's active organization context. User must be a member of the target organization.
+// SwitchWorkspace godoc
+// @Summary     Switch active workspace
+// @Description Switch the user's active workspace context. User must be a member of the target workspace.
 // @Tags        Profile
 // @Accept      json
 // @Produce     json
 // @Security    BearerAuth
-// @Param       body body SwitchOrganizationRequest true "Organization switch payload"
-// @Success     200 {object} utils.APIResponse "Organization switched successfully"
-// @Failure     400 {object} utils.APIResponse "Invalid organization ID"
-// @Failure     403 {object} utils.APIResponse "Not a member of the organization"
-// @Router      /api/users/me/switch-organization [post]
-// M11: Workspace Switch Endpoint
-func (h *Handler) SwitchOrganization(c *gin.Context) {
-	var req SwitchOrganizationRequest
+// @Param       body body SwitchWorkspaceRequest true "Workspace switch payload"
+// @Success     200 {object} utils.APIResponse "Workspace switched successfully"
+// @Failure     400 {object} utils.APIResponse "Invalid workspace ID"
+// @Failure     403 {object} utils.APIResponse "Not a member of the workspace"
+// @Router      /api/users/me/switch-workspace [post]
+// M11: Workspace Switch Endpoint, M-MIGRATION: renamed from SwitchOrganization
+func (h *Handler) SwitchWorkspace(c *gin.Context) {
+	var req SwitchWorkspaceRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.SendError(c, http.StatusBadRequest, err.Error())
@@ -327,22 +321,19 @@ func (h *Handler) SwitchOrganization(c *gin.Context) {
 	user := c.MustGet("user").(models.MinimalUser)
 
 	// Validate membership
-	valid, err := h.authService.CheckOrganizationMembership(user.ID, req.OrganizationID)
+	valid, err := h.authService.CheckWorkspaceMembership(user.ID, req.WorkspaceID)
 	if err != nil {
 		utils.SendError(c, http.StatusInternalServerError, "Failed to verify membership")
 		return
 	}
 	if !valid {
-		utils.SendError(c, http.StatusForbidden, "You are not a member of this organization")
+		utils.SendError(c, http.StatusForbidden, "You are not a member of this workspace")
 		return
 	}
 
-	// Update org context in middleware cache (this is handled by the middleware on next request)
-	// For now, just return success - the middleware will resolve the new org on subsequent requests
-	// Or we can update the user's context directly
-
-	utils.SendSuccess(c, "Organization switched successfully", gin.H{
-		"organization_id": req.OrganizationID,
-		"message":         "Switched organization. Use X-Organization-ID header for subsequent requests.",
+	// For now, just return success - the middleware will resolve the new workspace on subsequent requests
+	utils.SendSuccess(c, "Workspace switched successfully", gin.H{
+		"workspace_id": req.WorkspaceID,
+		"message":      "Switched workspace. Use X-Workspace-ID header for subsequent requests.",
 	})
 }

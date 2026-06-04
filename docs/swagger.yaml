@@ -69,13 +69,13 @@ definitions:
     - password
     - phone
     type: object
-  auth.SwitchOrganizationRequest:
+  auth.SwitchWorkspaceRequest:
     properties:
-      organization_id:
+      workspace_id:
         example: 1
         type: integer
     required:
-    - organization_id
+    - workspace_id
     type: object
   auth.UpdateProfileRequest:
     properties:
@@ -88,6 +88,35 @@ definitions:
       phone:
         example: "+628123456789"
         type: string
+    type: object
+  clients.Client:
+    properties:
+      address:
+        type: string
+      company:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      notes:
+        type: string
+      phone:
+        type: string
+      total_revenue:
+        type: number
+      updated_at:
+        type: string
+      website:
+        type: string
+      whatsapp:
+        type: string
+      workspace_id:
+        type: integer
     type: object
   clients.CreateClientRequest:
     properties:
@@ -237,227 +266,37 @@ definitions:
       title:
         type: string
     type: object
-  organizations.AcceptInvitationRequest:
-    description: Request body for accepting an organization invitation
+  projects.CreateProjectRequest:
     properties:
-      token:
-        example: 550e8400-e29b-41d4-a716-446655440000
-        type: string
-    required:
-    - token
-    type: object
-  organizations.ActivateTierRequest:
-    description: Request body for activating a tier for a user
-    properties:
-      duration_months:
-        example: 12
-        maximum: 24
-        minimum: 1
-        type: integer
-      tier:
-        example: pro
-        type: string
-    required:
-    - duration_months
-    - tier
-    type: object
-  organizations.ActivateTierResult:
-    properties:
-      affected_organizations:
-        items:
-          type: string
-        type: array
-      tier:
-        type: string
-      tier_activated_at:
-        type: string
-      tier_expires_at:
-        type: string
-      user_id:
-        type: integer
-    type: object
-  organizations.CreateOrgRequest:
-    description: Request body for organization creation
-    properties:
-      name:
-        example: My Organization
-        type: string
-    required:
-    - name
-    type: object
-  organizations.Features:
-    properties:
-      audit_log:
-        type: boolean
-      comments:
-        type: boolean
-      realtime:
-        type: boolean
-    type: object
-  organizations.InviteMemberRequest:
-    description: Request body for inviting a member to organization
-    properties:
-      email:
-        example: member@example.com
-        type: string
-    required:
-    - email
-    type: object
-  organizations.LimitsInfo:
-    properties:
-      max_clients:
-        type: integer
-      max_invoices_per_month:
-        type: integer
-      max_members_per_workspace:
-        type: integer
-      max_projects_per_workspace:
-        type: integer
-      max_tasks_per_project:
-        type: integer
-      max_workspaces:
-        type: integer
-    type: object
-  organizations.Organization:
-    properties:
-      created_at:
-        type: string
-      id:
-        type: integer
-      name:
-        type: string
-      org_type:
-        type: string
-      owner_id:
-        type: integer
-    type: object
-  organizations.OrganizationInvitation:
-    properties:
-      accepted_at:
-        type: string
-      created_at:
-        type: string
-      created_by:
-        type: integer
-      expires_at:
-        type: string
-      id:
-        type: integer
-      invited_email:
-        type: string
-      org_id:
-        type: integer
-      role:
-        type: string
-      status:
-        description: pending, accepted, expired, revoked
-        type: string
-      token:
-        type: string
-    type: object
-  organizations.ResendInvitationRequest:
-    description: Request body for resending an invitation
-    properties:
-      invitation_id:
+      client_id:
         example: 1
         type: integer
-    required:
-    - invitation_id
-    type: object
-  organizations.TierInfoResponse:
-    properties:
-      activated_at:
-        type: string
-      days_remaining:
-        type: integer
-      effective_tier:
-        type: string
-      expires_at:
-        type: string
-      features:
-        $ref: '#/definitions/organizations.Features'
-      is_active:
-        type: boolean
-      limits:
-        $ref: '#/definitions/organizations.LimitsInfo'
-      tier:
-        type: string
-      usage:
-        $ref: '#/definitions/organizations.UsageInfo'
-    type: object
-  organizations.TierLimit:
-    properties:
-      can_audit_log:
-        type: boolean
-      can_comment:
-        type: boolean
-      can_sse:
-        type: boolean
-      id:
-        type: integer
-      max_clients:
-        type: integer
-      max_invoices_per_month:
-        type: integer
-      max_members:
-        type: integer
-      max_projects:
-        type: integer
-      max_tasks_per_project:
-        type: integer
-      max_workspaces:
-        type: integer
-      tier:
-        type: string
-    type: object
-  organizations.TierPlanWithLimits:
-    properties:
-      description:
-        type: string
-      features:
-        $ref: '#/definitions/organizations.Features'
-      limits:
-        $ref: '#/definitions/organizations.TierLimit'
-      name:
-        type: string
-      price_monthly:
-        type: integer
-      price_yearly:
-        type: integer
-      tier:
-        type: string
-    type: object
-  organizations.UpdateMemberRoleRequest:
-    description: Request body for updating member role
-    properties:
-      role:
-        example: admin
-        type: string
-    required:
-    - role
-    type: object
-  organizations.UsageInfo:
-    properties:
-      clients:
-        type: integer
-      invoices_this_month:
-        type: integer
-      members:
-        type: integer
-      owned_workspaces:
-        type: integer
-      projects:
-        type: integer
-    type: object
-  projects.CreateProjectRequest:
-    description: Request body for project creation
-    properties:
       description:
         example: Complete redesign of company website
         type: string
       name:
         example: Website Redesign
         type: string
+      new_client:
+        properties:
+          company:
+            example: PT Maju Jaya
+            type: string
+          email:
+            example: contact@majujaya.co.id
+            type: string
+          name:
+            example: PT Maju Jaya
+            type: string
+          phone:
+            example: +62 21 1234567
+            type: string
+          whatsapp:
+            example: "6281234567890"
+            type: string
+        required:
+        - name
+        type: object
     required:
     - name
     type: object
@@ -465,6 +304,10 @@ definitions:
     properties:
       budget:
         type: number
+      client:
+        $ref: '#/definitions/clients.Client'
+      client_id:
+        type: integer
       created_at:
         type: string
       deadline:
@@ -475,8 +318,6 @@ definitions:
         type: integer
       name:
         type: string
-      organization_id:
-        type: integer
       priority:
         type: string
       progress:
@@ -484,8 +325,10 @@ definitions:
       project_status:
         $ref: '#/definitions/projects.ProjectStatus'
       status_id:
-        type: string
+        type: integer
       version:
+        type: integer
+      workspace_id:
         type: integer
     type: object
   projects.ProjectStatus:
@@ -493,16 +336,18 @@ definitions:
       color:
         type: string
       id:
-        type: string
+        type: integer
       name:
         type: string
     type: object
   projects.UpdateProjectRequest:
-    description: Request body for project update (all fields optional)
     properties:
       budget:
         example: 5000000
         type: number
+      client_id:
+        example: 1
+        type: integer
       deadline:
         example: "2026-06-30"
         type: string
@@ -522,8 +367,8 @@ definitions:
         example: in_progress
         type: string
       status_id:
-        example: uuid-string
-        type: string
+        example: 1
+        type: integer
     type: object
   tasks.CreateLabelRequest:
     description: Request body for creating a label
@@ -720,20 +565,232 @@ definitions:
       warning:
         type: string
     type: object
+  workspaces.AcceptInvitationRequest:
+    properties:
+      token:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    required:
+    - token
+    type: object
+  workspaces.ActivateTierRequest:
+    properties:
+      duration_months:
+        example: 12
+        maximum: 24
+        minimum: 1
+        type: integer
+      tier:
+        example: starter
+        type: string
+    required:
+    - duration_months
+    - tier
+    type: object
+  workspaces.ActivateTierResult:
+    properties:
+      tier:
+        type: string
+      tier_activated_at:
+        type: string
+      tier_expires_at:
+        type: string
+      workspace_id:
+        type: integer
+      workspace_name:
+        type: string
+    type: object
+  workspaces.CreateWorkspaceRequest:
+    properties:
+      name:
+        example: My Workspace
+        type: string
+    required:
+    - name
+    type: object
+  workspaces.Features:
+    properties:
+      audit_log:
+        type: boolean
+      comments:
+        type: boolean
+      realtime:
+        type: boolean
+    type: object
+  workspaces.InviteMemberRequest:
+    properties:
+      email:
+        example: member@example.com
+        type: string
+    required:
+    - email
+    type: object
+  workspaces.LimitsInfo:
+    properties:
+      max_clients:
+        type: integer
+      max_invoices_per_month:
+        type: integer
+      max_members_per_workspace:
+        type: integer
+      max_projects_per_workspace:
+        type: integer
+      max_tasks_per_project:
+        type: integer
+      max_workspaces:
+        type: integer
+    type: object
+  workspaces.ResendInvitationRequest:
+    properties:
+      invitation_id:
+        example: 1
+        type: integer
+    required:
+    - invitation_id
+    type: object
+  workspaces.TierInfoResponse:
+    properties:
+      activated_at:
+        type: string
+      days_remaining:
+        type: integer
+      effective_tier:
+        type: string
+      expires_at:
+        type: string
+      features:
+        $ref: '#/definitions/workspaces.Features'
+      is_active:
+        type: boolean
+      limits:
+        $ref: '#/definitions/workspaces.LimitsInfo'
+      tier:
+        type: string
+      usage:
+        $ref: '#/definitions/workspaces.UsageInfo'
+    type: object
+  workspaces.TierLimit:
+    properties:
+      can_audit_log:
+        type: boolean
+      can_comment:
+        type: boolean
+      can_sse:
+        type: boolean
+      id:
+        type: integer
+      max_clients:
+        type: integer
+      max_invoices_per_month:
+        type: integer
+      max_members:
+        type: integer
+      max_projects:
+        type: integer
+      max_tasks_per_project:
+        type: integer
+      max_workspaces:
+        type: integer
+      tier:
+        type: string
+    type: object
+  workspaces.TierPlanWithLimits:
+    properties:
+      description:
+        type: string
+      features:
+        $ref: '#/definitions/workspaces.Features'
+      limits:
+        $ref: '#/definitions/workspaces.TierLimit'
+      name:
+        type: string
+      price_monthly:
+        type: integer
+      price_yearly:
+        type: integer
+      tier:
+        type: string
+    type: object
+  workspaces.UpdateMemberRoleRequest:
+    properties:
+      role:
+        example: admin
+        type: string
+    required:
+    - role
+    type: object
+  workspaces.UsageInfo:
+    properties:
+      clients:
+        type: integer
+      invoices_this_month:
+        type: integer
+      members:
+        type: integer
+      owned_workspaces:
+        type: integer
+      projects:
+        type: integer
+    type: object
+  workspaces.Workspace:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      owner_id:
+        type: integer
+      tier:
+        type: string
+      tier_activated_at:
+        type: string
+      tier_activated_by:
+        type: integer
+      tier_expires_at:
+        type: string
+      workspace_type:
+        type: string
+    type: object
+  workspaces.WorkspaceInvitation:
+    properties:
+      accepted_at:
+        type: string
+      created_at:
+        type: string
+      created_by:
+        type: integer
+      expires_at:
+        type: string
+      id:
+        type: integer
+      invited_email:
+        type: string
+      role:
+        type: string
+      status:
+        description: pending, accepted, expired, revoked
+        type: string
+      token:
+        type: string
+      workspace_id:
+        type: integer
+    type: object
 info:
   contact: {}
-  description: Task Management RESTful API Backend with authentication, organizations,
+  description: Task Management RESTful API Backend with authentication, workspaces,
     projects, tasks, statuses, and labels management.
   title: GoTask API
   version: 1.0.0
 paths:
-  /admin/users/{id}/tier:
+  /admin/workspaces/{id}/tier:
     patch:
       consumes:
       - application/json
-      description: Activate a subscription tier for a user. Requires admin role.
+      description: Activate a subscription tier for a workspace. Requires admin role.
       parameters:
-      - description: User ID
+      - description: Workspace ID
         in: path
         name: id
         required: true
@@ -743,7 +800,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/organizations.ActivateTierRequest'
+          $ref: '#/definitions/workspaces.ActivateTierRequest'
       produces:
       - application/json
       responses:
@@ -754,7 +811,7 @@ paths:
             - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/organizations.ActivateTierResult'
+                  $ref: '#/definitions/workspaces.ActivateTierResult'
               type: object
         "400":
           description: Invalid request
@@ -765,35 +822,14 @@ paths:
           schema:
             $ref: '#/definitions/utils.APIResponse'
         "404":
-          description: User not found
+          description: Workspace not found
           schema:
             $ref: '#/definitions/utils.APIResponse'
       security:
       - BearerAuth: []
-      summary: Activate tier for user (Admin only)
+      summary: Activate tier for workspace (Admin only)
       tags:
       - Tiers
-  /api/auth/me:
-    get:
-      consumes:
-      - application/json
-      description: Returns the authenticated user's profile based on JWT token.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: success
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-      security:
-      - BearerAuth: []
-      summary: Get current user
-      tags:
-      - Auth
   /api/users/me:
     patch:
       consumes:
@@ -860,42 +896,48 @@ paths:
       summary: Change password
       tags:
       - Profile
-  /api/users/me/switch-organization:
+  /api/users/me/switch-workspace:
     post:
       consumes:
       - application/json
-      description: Switch the user's active organization context. User must be a member
-        of the target organization.
+      description: Switch the user's active workspace context. User must be a member
+        of the target workspace.
       parameters:
-      - description: Organization switch payload
+      - description: Workspace switch payload
         in: body
         name: body
         required: true
         schema:
-          $ref: '#/definitions/auth.SwitchOrganizationRequest'
+          $ref: '#/definitions/auth.SwitchWorkspaceRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: Organization switched successfully
+          description: Workspace switched successfully
           schema:
             $ref: '#/definitions/utils.APIResponse'
         "400":
-          description: Invalid organization ID
+          description: Invalid workspace ID
           schema:
             $ref: '#/definitions/utils.APIResponse'
         "403":
-          description: Not a member of the organization
+          description: Not a member of the workspace
           schema:
             $ref: '#/definitions/utils.APIResponse'
       security:
       - BearerAuth: []
-      summary: Switch active organization
+      summary: Switch active workspace
       tags:
       - Profile
   /clients:
     get:
-      description: Get all clients for the current organization.
+      description: Get all clients for the current workspace.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -915,7 +957,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a new client for the current organization.
+      description: Create a new client for the current workspace.
       parameters:
       - description: Client payload
         in: body
@@ -923,6 +965,11 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/clients.CreateClientRequest'
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -1031,6 +1078,12 @@ paths:
   /clients/stats:
     get:
       description: Get total count, total revenue, and average revenue for clients.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -1099,9 +1152,9 @@ paths:
         name: token
         required: true
         type: string
-      - description: Organization ID
+      - description: Workspace ID
         in: header
-        name: X-Organization-ID
+        name: X-Workspace-ID
         required: true
         type: string
       produces:
@@ -1128,26 +1181,26 @@ paths:
     post:
       consumes:
       - application/json
-      description: Accept an organization invitation using the token received via
-        email. The authenticated user must match the invited email.
+      description: Accept a workspace invitation using the token received via email.
+        The authenticated user must match the invited email.
       parameters:
       - description: Accept invitation payload
         in: body
         name: body
         required: true
         schema:
-          $ref: '#/definitions/organizations.AcceptInvitationRequest'
+          $ref: '#/definitions/workspaces.AcceptInvitationRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: Successfully joined the organization
+          description: Successfully joined the workspace
           schema:
             allOf:
             - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/organizations.Organization'
+                  $ref: '#/definitions/workspaces.Workspace'
               type: object
         "400":
           description: Invalid token or already used
@@ -1178,7 +1231,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/organizations.ResendInvitationRequest'
+          $ref: '#/definitions/workspaces.ResendInvitationRequest'
       produces:
       - application/json
       responses:
@@ -1197,7 +1250,13 @@ paths:
       - Invitations
   /invoices:
     get:
-      description: Get all invoices for the current organization.
+      description: Get all invoices for the current workspace.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -1225,6 +1284,11 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/invoices.CreateInvoiceRequest'
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -1379,7 +1443,7 @@ paths:
         type: integer
       - description: Organization ID
         in: header
-        name: X-Organization-ID
+        name: X-Workspace-ID
         required: true
         type: string
       produces:
@@ -1416,7 +1480,7 @@ paths:
           $ref: '#/definitions/tasks.UpdateLabelRequest'
       - description: Organization ID
         in: header
-        name: X-Organization-ID
+        name: X-Workspace-ID
         required: true
         type: string
       produces:
@@ -1482,270 +1546,13 @@ paths:
       summary: User login
       tags:
       - Auth
-  /organizations:
-    get:
-      description: Retrieve a list of all organizations the authenticated user belongs
-        to.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Success
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.APIResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/organizations.Organization'
-                  type: array
-              type: object
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-        "500":
-          description: Failed to fetch organizations
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-      security:
-      - BearerAuth: []
-      summary: Get user organizations
-      tags:
-      - Organizations
-    post:
-      consumes:
-      - application/json
-      description: Create a new organization. The requesting user automatically becomes
-        the owner.
-      parameters:
-      - description: Organization payload
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/organizations.CreateOrgRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Organization created successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/organizations.Organization'
-              type: object
-        "400":
-          description: Validation error
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-        "500":
-          description: Failed to create organization
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-      security:
-      - BearerAuth: []
-      summary: Create organization
-      tags:
-      - Organizations
-  /organizations/invitations:
-    get:
-      description: Retrieve all pending invitations for the organization. Requires
-        owner or admin role.
-      parameters:
-      - description: Organization ID
-        in: header
-        name: X-Organization-ID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Success
-          schema:
-            allOf:
-            - $ref: '#/definitions/utils.APIResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/organizations.OrganizationInvitation'
-                  type: array
-              type: object
-        "400":
-          description: Missing organization header
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-        "403":
-          description: Insufficient permission
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-        "500":
-          description: Failed to fetch invitations
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-      security:
-      - BearerAuth: []
-      summary: List pending invitations
-      tags:
-      - Invitations
-  /organizations/invite:
-    post:
-      consumes:
-      - application/json
-      description: Send an invitation email to add a new member to the organization.
-        Requires owner or admin role.
-      parameters:
-      - description: Invitation payload
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/organizations.InviteMemberRequest'
-      - description: Organization ID
-        in: header
-        name: X-Organization-ID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Member added successfully
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-        "400":
-          description: Validation error or invitation failed
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-        "403":
-          description: Insufficient permission
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-      security:
-      - BearerAuth: []
-      summary: Invite a member
-      tags:
-      - Organizations
-  /organizations/members:
-    get:
-      description: Retrieve all members of the organization with their roles.
-      parameters:
-      - description: Organization ID
-        in: header
-        name: X-Organization-ID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Success
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-        "400":
-          description: Missing organization header
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-        "500":
-          description: Failed to fetch members
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-      security:
-      - BearerAuth: []
-      summary: Get organization members
-      tags:
-      - Organizations
-  /organizations/members/{user_id}:
-    delete:
-      description: Remove a member from the organization. Requires owner or admin
-        role. Owner cannot be removed.
-      parameters:
-      - description: User ID to remove
-        in: path
-        name: user_id
-        required: true
-        type: integer
-      - description: Organization ID
-        in: header
-        name: X-Organization-ID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Member removed successfully
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-        "400":
-          description: Invalid user ID format
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-        "403":
-          description: Insufficient permission or cannot remove owner
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-      security:
-      - BearerAuth: []
-      summary: Remove a member
-      tags:
-      - Organizations
-    patch:
-      consumes:
-      - application/json
-      description: Update a member's role within the organization. Requires owner
-        or admin role. Cannot change owner's role.
-      parameters:
-      - description: User ID to update
-        in: path
-        name: user_id
-        required: true
-        type: integer
-      - description: Role update payload
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/organizations.UpdateMemberRoleRequest'
-      - description: Organization ID
-        in: header
-        name: X-Organization-ID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Role updated successfully
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-        "400":
-          description: Invalid role or user ID
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-        "403":
-          description: Insufficient permission or cannot change owner role
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-      security:
-      - BearerAuth: []
-      summary: Update member role
-      tags:
-      - Organizations
   /projects:
     get:
-      description: Retrieve all projects belonging to the current organization.
+      description: Retrieve all projects belonging to the current workspace.
       parameters:
-      - description: Organization ID
+      - description: Workspace ID
         in: header
-        name: X-Organization-ID
+        name: X-Workspace-ID
         required: true
         type: string
       produces:
@@ -1763,7 +1570,7 @@ paths:
                   type: array
               type: object
         "400":
-          description: Missing organization header
+          description: Missing workspace header
           schema:
             $ref: '#/definitions/utils.APIResponse'
         "500":
@@ -1778,7 +1585,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a new project within the organization.
+      description: Create a new project within the workspace. Can optionally link
+        to a client or create one inline.
       parameters:
       - description: Project payload
         in: body
@@ -1786,9 +1594,9 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/projects.CreateProjectRequest'
-      - description: Organization ID
+      - description: Workspace ID
         in: header
-        name: X-Organization-ID
+        name: X-Workspace-ID
         required: true
         type: string
       produces:
@@ -1804,7 +1612,7 @@ paths:
                   $ref: '#/definitions/projects.Project'
               type: object
         "400":
-          description: Validation error
+          description: Validation error or cannot use both client_id and new_client
           schema:
             $ref: '#/definitions/utils.APIResponse'
         "500":
@@ -1826,9 +1634,9 @@ paths:
         name: id
         required: true
         type: integer
-      - description: Organization ID
+      - description: Workspace ID
         in: header
-        name: X-Organization-ID
+        name: X-Workspace-ID
         required: true
         type: string
       produces:
@@ -1859,9 +1667,9 @@ paths:
         name: id
         required: true
         type: integer
-      - description: Organization ID
+      - description: Workspace ID
         in: header
-        name: X-Organization-ID
+        name: X-Workspace-ID
         required: true
         type: string
       produces:
@@ -1886,8 +1694,8 @@ paths:
       tags:
       - Projects
     patch:
-      description: Update a project's fields (name, description, status, priority,
-        budget, deadline, progress).
+      description: 'Update a project''s fields including client linking. Use client_id:
+        0 to unlink.'
       parameters:
       - description: Project ID
         in: path
@@ -1900,9 +1708,9 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/projects.UpdateProjectRequest'
-      - description: Organization ID
+      - description: Workspace ID
         in: header
-        name: X-Organization-ID
+        name: X-Workspace-ID
         required: true
         type: string
       produces:
@@ -1941,7 +1749,7 @@ paths:
         type: integer
       - description: Organization ID
         in: header
-        name: X-Organization-ID
+        name: X-Workspace-ID
         required: true
         type: string
       produces:
@@ -1982,7 +1790,7 @@ paths:
           $ref: '#/definitions/tasks.CreateLabelRequest'
       - description: Organization ID
         in: header
-        name: X-Organization-ID
+        name: X-Workspace-ID
         required: true
         type: string
       produces:
@@ -2021,7 +1829,7 @@ paths:
         type: integer
       - description: Organization ID
         in: header
-        name: X-Organization-ID
+        name: X-Workspace-ID
         required: true
         type: string
       produces:
@@ -2059,7 +1867,7 @@ paths:
           $ref: '#/definitions/tasks.CreateStatusRequest'
       - description: Organization ID
         in: header
-        name: X-Organization-ID
+        name: X-Workspace-ID
         required: true
         type: string
       produces:
@@ -2108,7 +1916,7 @@ paths:
         type: integer
       - description: Organization ID
         in: header
-        name: X-Organization-ID
+        name: X-Workspace-ID
         required: true
         type: string
       produces:
@@ -2134,7 +1942,7 @@ paths:
   /ready:
     get:
       description: Checks database connectivity. Returns 200 when DB is reachable,
-        503 when not. Used for load balancer readiness probes.
+        503 when not.
       produces:
       - application/json
       responses:
@@ -2439,7 +2247,7 @@ paths:
         type: string
       - description: Organization ID
         in: header
-        name: X-Organization-ID
+        name: X-Workspace-ID
         required: true
         type: string
       produces:
@@ -2477,7 +2285,7 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/organizations.TierPlanWithLimits'
+                    $ref: '#/definitions/workspaces.TierPlanWithLimits'
                   type: array
               type: object
         "500":
@@ -2491,7 +2299,8 @@ paths:
       - Tiers
   /users/me/tier:
     get:
-      description: Get the authenticated user's tier information including usage statistics.
+      description: Get the authenticated user's tier information for the active workspace
+        including usage statistics.
       produces:
       - application/json
       responses:
@@ -2502,7 +2311,7 @@ paths:
             - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/organizations.TierInfoResponse'
+                  $ref: '#/definitions/workspaces.TierInfoResponse'
               type: object
         "401":
           description: Unauthorized
@@ -2517,6 +2326,263 @@ paths:
       summary: Get my tier info
       tags:
       - Tiers
+  /workspaces:
+    get:
+      description: Retrieve a list of all workspaces the authenticated user belongs
+        to.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/workspaces.Workspace'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to fetch workspaces
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user workspaces
+      tags:
+      - Workspaces
+    post:
+      consumes:
+      - application/json
+      description: Create a new workspace. The requesting user automatically becomes
+        the owner.
+      parameters:
+      - description: Workspace payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/workspaces.CreateWorkspaceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Workspace created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/workspaces.Workspace'
+              type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to create workspace
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Create workspace
+      tags:
+      - Workspaces
+  /workspaces/invitations:
+    get:
+      description: Retrieve all pending invitations for the workspace. Requires owner
+        or admin role.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/workspaces.WorkspaceInvitation'
+                  type: array
+              type: object
+        "400":
+          description: Missing workspace header
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "403":
+          description: Insufficient permission
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to fetch invitations
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: List pending invitations
+      tags:
+      - Invitations
+  /workspaces/invite:
+    post:
+      consumes:
+      - application/json
+      description: Send an invitation email to add a new member to the workspace.
+        Requires owner or admin role.
+      parameters:
+      - description: Invitation payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/workspaces.InviteMemberRequest'
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Member added successfully
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "400":
+          description: Validation error or invitation failed
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "403":
+          description: Insufficient permission
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Invite a member
+      tags:
+      - Workspaces
+  /workspaces/members:
+    get:
+      description: Retrieve all members of the workspace with their roles.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "400":
+          description: Missing workspace header
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Failed to fetch members
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get workspace members
+      tags:
+      - Workspaces
+  /workspaces/members/{user_id}:
+    delete:
+      description: Remove a member from the workspace. Requires owner or admin role.
+        Owner cannot be removed.
+      parameters:
+      - description: User ID to remove
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Member removed successfully
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "400":
+          description: Invalid user ID format
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "403":
+          description: Insufficient permission or cannot remove owner
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove a member
+      tags:
+      - Workspaces
+    patch:
+      consumes:
+      - application/json
+      description: Update a member's role within the workspace. Requires owner or
+        admin role. Cannot change owner's role.
+      parameters:
+      - description: User ID to update
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      - description: Role update payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/workspaces.UpdateMemberRoleRequest'
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Role updated successfully
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "400":
+          description: Invalid role or user ID
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "403":
+          description: Insufficient permission or cannot change owner role
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Update member role
+      tags:
+      - Workspaces
 schemes:
 - https
 securityDefinitions:

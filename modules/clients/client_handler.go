@@ -42,17 +42,18 @@ func NewClientHandler(service ClientService) *Handler {
 
 // ListClients godoc
 // @Summary     List clients
-// @Description Get all clients for the current organization.
+// @Description Get all clients for the current workspace.
 // @Tags        Clients
 // @Produce     json
+// @Param       X-Workspace-ID header string true "Workspace ID"
 // @Security    BearerAuth
 // @Success     200 {object} utils.APIResponse "success"
 // @Failure     500 {object} utils.APIResponse "Failed to fetch clients"
 // @Router      /clients [get]
 func (h *Handler) ListClients(c *gin.Context) {
-	orgID := c.MustGet("org_id").(string)
+	workspaceID := c.MustGet("workspace_id").(string)
 
-	clients, err := h.service.GetClients(orgID)
+	clients, err := h.service.GetClients(workspaceID)
 	if err != nil {
 		utils.SendError(c, http.StatusInternalServerError, "Failed to fetch clients")
 		return
@@ -91,19 +92,20 @@ func (h *Handler) GetClient(c *gin.Context) {
 
 // CreateClient godoc
 // @Summary     Create a client
-// @Description Create a new client for the current organization.
+// @Description Create a new client for the current workspace.
 // @Tags        Clients
 // @Accept      json
 // @Produce     json
 // @Param       body body CreateClientRequest true "Client payload"
+// @Param       X-Workspace-ID header string true "Workspace ID"
 // @Security    BearerAuth
 // @Success     201 {object} utils.APIResponse "Client created successfully"
 // @Failure     400 {object} utils.APIResponse "Validation error"
 // @Failure     500 {object} utils.APIResponse "Failed to create client"
 // @Router      /clients [post]
 func (h *Handler) CreateClient(c *gin.Context) {
-	orgIDStr := c.MustGet("org_id").(string)
-	orgID, _ := strconv.ParseUint(orgIDStr, 10, 64)
+	workspaceIDStr := c.MustGet("workspace_id").(string)
+	workspaceID, _ := strconv.ParseUint(workspaceIDStr, 10, 64)
 
 	var req CreateClientRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -112,15 +114,15 @@ func (h *Handler) CreateClient(c *gin.Context) {
 	}
 
 	input := CreateClientInput{
-		Name:           req.Name,
-		Email:          req.Email,
-		WhatsApp:       req.WhatsApp,
-		Phone:          req.Phone,
-		Company:        req.Company,
-		Website:        req.Website,
-		Address:        req.Address,
-		Notes:          req.Notes,
-		OrganizationID: uint(orgID),
+		Name:        req.Name,
+		Email:       req.Email,
+		WhatsApp:    req.WhatsApp,
+		Phone:       req.Phone,
+		Company:     req.Company,
+		Website:     req.Website,
+		Address:     req.Address,
+		Notes:       req.Notes,
+		WorkspaceID: uint(workspaceID),
 	}
 
 	client, err := h.service.CreateClient(input)
@@ -212,14 +214,15 @@ func (h *Handler) DeleteClient(c *gin.Context) {
 // @Description Get total count, total revenue, and average revenue for clients.
 // @Tags        Clients
 // @Produce     json
+// @Param       X-Workspace-ID header string true "Workspace ID"
 // @Security    BearerAuth
 // @Success     200 {object} utils.APIResponse "success"
 // @Failure     500 {object} utils.APIResponse "Failed to fetch stats"
 // @Router      /clients/stats [get]
 func (h *Handler) GetClientStats(c *gin.Context) {
-	orgID := c.MustGet("org_id").(string)
+	workspaceID := c.MustGet("workspace_id").(string)
 
-	stats, err := h.service.GetClientStats(orgID)
+	stats, err := h.service.GetClientStats(workspaceID)
 	if err != nil {
 		utils.SendError(c, http.StatusInternalServerError, "Failed to fetch stats")
 		return

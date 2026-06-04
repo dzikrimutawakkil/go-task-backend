@@ -12,8 +12,9 @@ import (
 	"gotask-backend/utils"
 )
 
+// M-MIGRATION: Updated to use workspace-based tier
 type InvoiceService interface {
-	GetInvoices(orgID string) ([]Invoice, error)
+	GetInvoices(workspaceID string) ([]Invoice, error)
 	GetInvoice(id uint) (*Invoice, error)
 	CreateInvoice(input CreateInvoiceInput) (*Invoice, error)
 	UpdateInvoice(id uint, input UpdateInvoiceInput) (*Invoice, error)
@@ -25,17 +26,17 @@ type InvoiceService interface {
 type invoiceService struct {
 	repo       InvoiceRepository
 	clientRepo clients.ClientRepository
-	orgRepo    interfaces.OrgFinder
+	wsRepo     interfaces.WorkspaceFinder
 	authS      interfaces.AuthService
 }
 
-// M5: Subscription Tiers — added orgRepo and authS for quota checks.
-func NewInvoiceService(repo InvoiceRepository, clientRepo clients.ClientRepository, orgRepo interfaces.OrgFinder, authS interfaces.AuthService) InvoiceService {
-	return &invoiceService{repo: repo, clientRepo: clientRepo, orgRepo: orgRepo, authS: authS}
+// M5: Subscription Tiers — M-MIGRATION: uses workspace-based tier for quota checks
+func NewInvoiceService(repo InvoiceRepository, clientRepo clients.ClientRepository, wsRepo interfaces.WorkspaceFinder, authS interfaces.AuthService) InvoiceService {
+	return &invoiceService{repo: repo, clientRepo: clientRepo, wsRepo: wsRepo, authS: authS}
 }
 
-func (s *invoiceService) GetInvoices(orgID string) ([]Invoice, error) {
-	return s.repo.FindAllByOrg(orgID)
+func (s *invoiceService) GetInvoices(workspaceID string) ([]Invoice, error) {
+	return s.repo.FindAllByWorkspace(workspaceID)
 }
 
 func (s *invoiceService) GetInvoice(id uint) (*Invoice, error) {
@@ -57,19 +58,18 @@ func (s *invoiceService) GenerateInvoiceNumber() string {
 }
 
 func (s *invoiceService) CreateInvoice(input CreateInvoiceInput) (*Invoice, error) {
-	// M5: Quota check — check invoice limit based on org owner's tier
+	// M-MIGRATION: Quota check — check invoice limit based on workspace's tier
 	effectiveTier := "free"
 	limits := utils.GetTierLimits("free")
 
-	if orgInfo, err := s.orgRepo.FindOrgInfoByID(input.OrganizationID); err == nil {
-		if owner, err := s.authS.FindByID(orgInfo.OwnerID); err == nil {
-			effectiveTier = utils.GetEffectiveTier(owner.Tier, owner.TierExpiresAt)
-			limits = utils.GetTierLimits(effectiveTier)
-		}
+	wsInfo, err := s.wsRepo.FindWorkspaceInfoByID(input.WorkspaceID)
+	if err == nil {
+		effectiveTier = utils.GetEffectiveTier(wsInfo.Tier, wsInfo.TierExpiresAt)
+		limits = utils.GetTierLimits(effectiveTier)
 	}
 
 	if limits.MaxInvoicesPerMonth != -1 {
-		count, err := s.repo.CountThisMonth(fmt.Sprintf("%d", input.OrganizationID))
+		count, err := s.repo.CountThisMonth(fmt.Sprintf("%d", input.WorkspaceID))
 		if err != nil {
 			return nil, err
 		}
@@ -89,20 +89,20 @@ func (s *invoiceService) CreateInvoice(input CreateInvoiceInput) (*Invoice, erro
 	}
 
 	invoice := Invoice{
-		OrganizationID: input.OrganizationID,
-		InvoiceNumber:  invoiceNumber,
-		ClientID:       input.ClientID,
-		ProjectID:      input.ProjectID,
-		Title:          input.Title,
-		Amount:         input.Amount,
-		Tax:            input.Tax,
-		Discount:       input.Discount,
-		AmountPaid:     0,
-		Status:         "draft",
-		DueDate:        input.DueDate,
-		Notes:          input.Notes,
-		Items:          input.Items,
-		Version:        1,
+		WorkspaceID:   input.WorkspaceID,
+		InvoiceNumber: invoiceNumber,
+		ClientID:      input.ClientID,
+		ProjectID:     input.ProjectID,
+		Title:         input.Title,
+		Amount:        input.Amount,
+		Tax:           input.Tax,
+		Discount:      input.Discount,
+		AmountPaid:    0,
+		Status:        "draft",
+		DueDate:       input.DueDate,
+		Notes:         input.Notes,
+		Items:         input.Items,
+		Version:       1,
 	}
 
 	if err := s.repo.Create(&invoice); err != nil {

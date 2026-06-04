@@ -39,7 +39,7 @@ func NewLabelHandler(service LabelService) *LabelHandler {
 // @Produce     json
 // @Param       id path int true "Project ID"
 // @Param       body body CreateLabelRequest true "Label payload"
-// @Param       X-Organization-ID header string true "Organization ID"
+// @Param       X-Workspace-ID header string false "Workspace ID (optional - auto-resolved if not provided)"
 // @Security    BearerAuth
 // @Success     201 {object} utils.APIResponse{data=Label} "Label created successfully"
 // @Failure     400 {object} utils.APIResponse "Validation error"
@@ -53,12 +53,12 @@ func (h *LabelHandler) CreateLabel(c *gin.Context) {
 		return
 	}
 
-	orgIDInterface, exists := c.Get("org_id")
+	wsIDInterface, exists := c.Get("workspace_id")
 	if !exists {
-		utils.SendError(c, http.StatusBadRequest, "X-Organization-ID header is required")
+		utils.SendError(c, http.StatusBadRequest, "Workspace context not found")
 		return
 	}
-	orgID := orgIDInterface.(string)
+	wsID := wsIDInterface.(string)
 
 	var req CreateLabelRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -77,7 +77,7 @@ func (h *LabelHandler) CreateLabel(c *gin.Context) {
 		requesterID = u.GetID()
 	}
 
-	label, err := h.service.CreateLabel(uint(projectID), req.Name, req.Color, requesterID, orgID)
+	label, err := h.service.CreateLabel(uint(projectID), req.Name, req.Color, requesterID, wsID)
 	if err != nil {
 		utils.SendError(c, http.StatusInternalServerError, err.Error())
 		return
@@ -92,10 +92,10 @@ func (h *LabelHandler) CreateLabel(c *gin.Context) {
 // @Tags        Labels
 // @Produce     json
 // @Param       id path int true "Project ID"
-// @Param       X-Organization-ID header string true "Organization ID"
+// @Param       X-Workspace-ID header string false "Workspace ID (optional - auto-resolved if not provided)"
 // @Security    BearerAuth
 // @Success     200 {object} utils.APIResponse "success"
-// @Failure     400 {object} utils.APIResponse "Missing organization header"
+// @Failure     400 {object} utils.APIResponse "Missing workspace context"
 // @Failure     500 {object} utils.APIResponse "Failed to fetch labels"
 // @Router      /projects/{id}/labels [get]
 func (h *LabelHandler) GetLabels(c *gin.Context) {
@@ -106,14 +106,14 @@ func (h *LabelHandler) GetLabels(c *gin.Context) {
 		return
 	}
 
-	orgIDInterface, exists := c.Get("org_id")
+	wsIDInterface, exists := c.Get("workspace_id")
 	if !exists {
-		utils.SendError(c, http.StatusBadRequest, "X-Organization-ID header is required")
+		utils.SendError(c, http.StatusBadRequest, "Workspace context not found")
 		return
 	}
-	orgID := orgIDInterface.(string)
+	wsID := wsIDInterface.(string)
 
-	labels, err := h.service.GetLabels(uint(projectID), orgID)
+	labels, err := h.service.GetLabels(uint(projectID), wsID)
 	if err != nil {
 		utils.SendError(c, http.StatusInternalServerError, err.Error())
 		return
@@ -130,7 +130,7 @@ func (h *LabelHandler) GetLabels(c *gin.Context) {
 // @Produce     json
 // @Param       id path int true "Label ID"
 // @Param       body body UpdateLabelRequest true "Label update payload"
-// @Param       X-Organization-ID header string true "Organization ID"
+// @Param       X-Workspace-ID header string false "Workspace ID (optional - auto-resolved if not provided)"
 // @Security    BearerAuth
 // @Success     200 {object} utils.APIResponse{data=Label} "Label updated successfully"
 // @Failure     400 {object} utils.APIResponse "Validation error"
@@ -144,12 +144,12 @@ func (h *LabelHandler) UpdateLabel(c *gin.Context) {
 		return
 	}
 
-	orgIDInterface, exists := c.Get("org_id")
+	wsIDInterface, exists := c.Get("workspace_id")
 	if !exists {
-		utils.SendError(c, http.StatusBadRequest, "X-Organization-ID header is required")
+		utils.SendError(c, http.StatusBadRequest, "Workspace context not found")
 		return
 	}
-	orgID := orgIDInterface.(string)
+	wsID := wsIDInterface.(string)
 
 	var req UpdateLabelRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -157,7 +157,7 @@ func (h *LabelHandler) UpdateLabel(c *gin.Context) {
 		return
 	}
 
-	label, err := h.service.UpdateLabel(uint(labelID), req.Name, req.Color, orgID)
+	label, err := h.service.UpdateLabel(uint(labelID), req.Name, req.Color, wsID)
 	if err != nil {
 		utils.SendError(c, http.StatusInternalServerError, err.Error())
 		return
@@ -172,7 +172,7 @@ func (h *LabelHandler) UpdateLabel(c *gin.Context) {
 // @Tags        Labels
 // @Produce     json
 // @Param       id path int true "Label ID"
-// @Param       X-Organization-ID header string true "Organization ID"
+// @Param       X-Workspace-ID header string false "Workspace ID (optional - auto-resolved if not provided)"
 // @Security    BearerAuth
 // @Success     200 {object} utils.APIResponse "Label deleted successfully"
 // @Failure     500 {object} utils.APIResponse "Failed to delete label"
@@ -185,14 +185,14 @@ func (h *LabelHandler) DeleteLabel(c *gin.Context) {
 		return
 	}
 
-	orgIDInterface, exists := c.Get("org_id")
+	wsIDInterface, exists := c.Get("workspace_id")
 	if !exists {
-		utils.SendError(c, http.StatusBadRequest, "X-Organization-ID header is required")
+		utils.SendError(c, http.StatusBadRequest, "Workspace context not found")
 		return
 	}
-	orgID := orgIDInterface.(string)
+	wsID := wsIDInterface.(string)
 
-	err = h.service.DeleteLabel(uint(labelID), orgID)
+	err = h.service.DeleteLabel(uint(labelID), wsID)
 	if err != nil {
 		utils.SendError(c, http.StatusInternalServerError, err.Error())
 		return

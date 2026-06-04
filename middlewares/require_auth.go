@@ -17,10 +17,10 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// personalOrgCache stores userID -> orgID mappings to avoid DB hit on every request.
+// personalWorkspaceCache stores userID -> workspaceID mappings to avoid DB hit on every request.
 var (
-	personalOrgCache = make(map[uint]uint)
-	personalOrgMu    sync.RWMutex
+	personalWorkspaceCache = make(map[uint]uint)
+	personalWorkspaceMu    sync.RWMutex
 )
 
 func RequireAuth(c *gin.Context) {
@@ -67,56 +67,49 @@ func RequireAuth(c *gin.Context) {
 			return
 		}
 
-		// 5. Attach User to request
+		// 5. Attach User to request (without Tier fields - tier is now per-workspace)
 		minimalUser := models.MinimalUser{
-			ID:              user.ID,
-			Email:           user.Email,
-			Name:            user.Name,
-			Phone:           user.Phone,
-			Address:         user.Address,
-			Tier:            user.Tier,
-			TierExpiresAt:   user.TierExpiresAt,
-			TierActivatedAt: user.TierActivatedAt,
-			TierActivatedBy: user.TierActivatedBy,
-			CreatedAt:       user.CreatedAt,
+			ID:        user.ID,
+			Email:     user.Email,
+			Name:      user.Name,
+			Phone:     user.Phone,
+			Address:   user.Address,
+			CreatedAt: user.CreatedAt,
 		}
 
 		c.Set("user", minimalUser)
 
 		// ---------------------------------------------------------
-		// NEW: Handle Organization Context Header (X-Organization-ID)
+		// M-MIGRATION: Handle Workspace Context Header (X-Workspace-ID)
 		// ---------------------------------------------------------
-		orgIDHeader := c.GetHeader("X-Organization-ID")
+		workspaceIDHeader := c.GetHeader("X-Workspace-ID")
 
-		if orgIDHeader != "" {
+		if workspaceIDHeader != "" {
 			// If the header is present, we MUST validate membership immediately.
 			var count int64
-			config.DB.Table("organization_users").
-				Where("user_id = ? AND organization_id = ?", user.ID, orgIDHeader).
+			config.DB.Table("workspace_members").
+				Where("user_id = ? AND workspace_id = ?", user.ID, workspaceIDHeader).
 				Count(&count)
 
 			if count == 0 {
 				// Stop the request here! Security Block.
-				utils.SendError(c, http.StatusForbidden, "Access denied: You are not a member of the organization specified in X-Organization-ID")
+				utils.SendError(c, http.StatusForbidden, "Access denied: You are not a member of the workspace specified in X-Workspace-ID")
 				c.Abort()
 				return
 			}
 
 			// If valid, save it to Context so controllers can use it
-			c.Set("org_id", orgIDHeader)
+			c.Set("workspace_id", workspaceIDHeader)
 		} else {
-			// No X-Organization-ID header → auto-resolve to user's personal workspace
-			orgID, err := resolvePersonalOrgID(user.ID)
+			// No X-Workspace-ID header → auto-resolve to user's personal workspace
+			workspaceID, err := resolvePersonalWorkspaceID(user.ID)
 			if err != nil {
 				utils.SendError(c, http.StatusInternalServerError, "Personal workspace not found")
 				c.Abort()
 				return
 			}
-			c.Set("org_id", strconv.FormatUint(uint64(orgID), 10))
+			c.Set("workspace_id", strconv.FormatUint(uint64(workspaceID), 10))
 		}
-
-		// Q17: Tier Info — set tier info in context for all responses
-		setTierInfo(c, user.Tier, user.TierExpiresAt)
 
 		c.Next()
 	} else {
@@ -125,57 +118,32 @@ func RequireAuth(c *gin.Context) {
 	}
 }
 
-// resolvePersonalOrgID looks up the personal org ID for a user, with in-memory cache.
-func resolvePersonalOrgID(userID uint) (uint, error) {
+// resolvePersonalWorkspaceID looks up the personal workspace ID for a user, with in-memory cache.
+func resolvePersonalWorkspaceID(userID uint) (uint, error) {
 	// Fast path: check cache first
-	personalOrgMu.RLock()
-	orgID, cached := personalOrgCache[userID]
-	personalOrgMu.RUnlock()
+	personalWorkspaceMu.RLock()
+	workspaceID, cached := personalWorkspaceCache[userID]
+	personalWorkspaceMu.RUnlock()
 	if cached {
-		return orgID, nil
+		return workspaceID, nil
 	}
 
 	// Cache miss: query DB
-	var org struct {
+	var ws struct {
 		ID uint
 	}
-	err := config.DB.Table("organizations").
+	err := config.DB.Table("workspaces").
 		Select("id").
-		Where("owner_id = ? AND org_type = 'personal'", userID).
-		First(&org).Error
+		Where("owner_id = ? AND workspace_type = 'personal'", userID).
+		First(&ws).Error
 	if err != nil {
 		return 0, err
 	}
 
 	// Store in cache
-	personalOrgMu.Lock()
-	personalOrgCache[userID] = org.ID
-	personalOrgMu.Unlock()
+	personalWorkspaceMu.Lock()
+	personalWorkspaceCache[userID] = ws.ID
+	personalWorkspaceMu.Unlock()
 
-	return org.ID, nil
-}
-
-// setTierInfo checks the user's tier status and sets info in Gin context.
-// M5: Subscription Tiers — Phase 6: Response & Middleware
-func setTierInfo(c *gin.Context, tier string, tierExpiresAt *time.Time) {
-	info := &utils.TierInfo{
-		Tier:     tier,
-		IsActive: utils.IsTierActive(tier, tierExpiresAt),
-	}
-
-	if tierExpiresAt != nil {
-		info.ExpiresAt = tierExpiresAt.Format(time.RFC3339)
-		info.DaysRemaining = utils.DaysRemaining(tierExpiresAt)
-	}
-
-	if tier == "free" {
-		info.IsActive = true
-		info.Warning = "Upgrade to access premium features."
-	} else if !info.IsActive {
-		info.Warning = "Tier expired. Your account has been downgraded to Free."
-	} else if info.DaysRemaining <= 7 && info.DaysRemaining >= 0 {
-		info.Warning = "Tier expires in " + strconv.Itoa(info.DaysRemaining) + " days. Consider renewing."
-	}
-
-	utils.SetTierInfo(c, info)
+	return ws.ID, nil
 }

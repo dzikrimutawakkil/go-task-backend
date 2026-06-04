@@ -4,14 +4,14 @@ import (
 	"context"
 	"gotask-backend/config"
 	"gotask-backend/docs"
-	"gotask-backend/handlers"
 	"gotask-backend/middlewares"
 	"gotask-backend/modules/auth"
 	"gotask-backend/modules/clients"
+	"gotask-backend/modules/health"
 	"gotask-backend/modules/invoices"
-	"gotask-backend/modules/organizations"
 	"gotask-backend/modules/projects"
 	"gotask-backend/modules/tasks"
+	"gotask-backend/modules/workspaces"
 	"gotask-backend/utils"
 	"log"
 	"net/http"
@@ -28,7 +28,7 @@ import (
 
 // @title          GoTask API
 // @version        1.0.0
-// @description    Task Management RESTful API Backend with authentication, organizations, projects, tasks, statuses, and labels management.
+// @description    Task Management RESTful API Backend with authentication, workspaces, projects, tasks, statuses, and labels management.
 // @BasePath       /
 // @schemes        https
 // @securityDefinitions.apikey BearerAuth
@@ -59,13 +59,13 @@ func main() {
 	r.Use(middlewares.EnsureJSON())
 
 	// Q2: Health check endpoints (NO auth required — must be before RequireAuth)
-	healthHandler := handlers.NewHealthHandler()
+	healthHandler := health.NewHandler()
 	r.GET("/health", healthHandler.Health)
 	r.GET("/ready", healthHandler.Ready)
 
 	// Swagger documentation endpoint
 	docs.SwaggerInfo.Title = "GoTask API"
-	docs.SwaggerInfo.Description = "Task Management RESTful API Backend with authentication, organizations, projects, tasks, statuses, and labels management."
+	docs.SwaggerInfo.Description = "Task Management RESTful API Backend with authentication, workspaces, projects, tasks, statuses, and labels management."
 	docs.SwaggerInfo.Version = "1.0.0"
 	docs.SwaggerInfo.BasePath = "/"
 	docs.SwaggerInfo.Schemes = []string{"https"}
@@ -73,50 +73,48 @@ func main() {
 
 	// Dependency Injection for Auth
 	authRepo := auth.NewAuthRepository(config.DB)
-	orgRepo := organizations.NewOrganizationRepository(config.DB)
-	authService := auth.NewAuthService(authRepo, orgRepo)
+	wsRepo := workspaces.NewWorkspaceRepository(config.DB)
+	authService := auth.NewAuthService(authRepo, wsRepo)
 	authHandler := auth.NewAuthHandler(authService)
 
-	// Dependency Injection for Tier Plans (needed by orgService)
-	tierPlanRepo := organizations.NewTierPlanRepository(config.DB)
+	// Dependency Injection for Tier Plans (needed by workspaceService)
+	tierPlanRepo := workspaces.NewTierPlanRepository(config.DB)
 
-	// Dependency Injection for Organization
-	invitationRepo := organizations.NewInvitationRepository(config.DB)
-	orgService := organizations.NewOrganizationService(orgRepo, authService, tierPlanRepo)
-	invitationService := organizations.NewInvitationService(invitationRepo, orgRepo, authService)
-	orgHandler := organizations.NewOrganizationHandler(orgService)
-	invitationHandler := organizations.NewInvitationHandler(invitationService, orgRepo)
+	// Dependency Injection for Workspaces
+	invitationRepo := workspaces.NewInvitationRepository(config.DB)
+	wsService := workspaces.NewWorkspaceService(wsRepo, authService, tierPlanRepo)
+	invitationService := workspaces.NewInvitationService(invitationRepo, wsRepo, authService)
+	wsHandler := workspaces.NewWorkspaceHandler(wsService)
+	invitationHandler := workspaces.NewInvitationHandler(invitationService, wsRepo)
 
-	// Dependency Injection for Tasks (M5: added orgRepo for quota checks)
+	// Dependency Injection for Tasks (M5: uses workspace-based quota)
 	taskRepo := tasks.NewTaskRepository(config.DB)
 	labelRepo := tasks.NewLabelRepository(config.DB)
-	taskService := tasks.NewTaskService(taskRepo, authService, labelRepo, orgRepo)
+	taskService := tasks.NewTaskService(taskRepo, authService, labelRepo, wsRepo)
 	taskHandler := tasks.NewTaskHandler(taskService)
 	labelHandler := tasks.NewLabelHandler(tasks.NewLabelService(labelRepo))
 
-	// Dependency Injection for Projects (M5: added authService for quota checks)
+	// Dependency Injection for Projects (M5: uses workspace-based quota)
 	projectRepo := projects.NewProjectRepository(config.DB)
-	projectService := projects.NewProjectService(projectRepo, taskService, orgRepo, authService)
+	projectService := projects.NewProjectService(projectRepo, taskService, wsRepo, authService)
 	projectHandler := projects.NewProjectHandler(projectService)
 
-	// Dependency Injection for Clients (M5: added orgRepo and authService for quota checks)
+	// Dependency Injection for Clients (M5: uses workspace-based quota)
 	clientRepo := clients.NewClientRepository(config.DB)
-	clientService := clients.NewClientService(clientRepo, orgRepo, authService)
+	clientService := clients.NewClientService(clientRepo, wsRepo, authService)
 	clientHandler := clients.NewClientHandler(clientService)
 
-	// Dependency Injection for Invoices (M5: added orgRepo and authService for quota checks)
+	// Dependency Injection for Invoices (M5: uses workspace-based quota)
 	invoiceRepo := invoices.NewInvoiceRepository(config.DB)
-	invoiceService := invoices.NewInvoiceService(invoiceRepo, clientRepo, orgRepo, authService)
+	invoiceService := invoices.NewInvoiceService(invoiceRepo, clientRepo, wsRepo, authService)
 	invoiceHandler := invoices.NewInvoiceHandler(invoiceService)
-
-	// Dependency Injection for Organizations (with TierPlan repo for quota checks)
 
 	// PUBLIC ROUTES
 	r.POST("/signup", authHandler.Signup)
 	r.POST("/login", authHandler.Login)
 	r.POST("/forgot-password", authHandler.ForgotPassword)
 	r.POST("/reset-password", authHandler.ResetPassword)
-	r.GET("/tier/plans", orgHandler.GetTierPlans) // Public: pricing page
+	r.GET("/tier/plans", wsHandler.GetTierPlans) // Public: pricing page
 
 	// PROTECTED ROUTES
 	// Q12: Rate limiting — per IP for unauthenticated, per user for authenticated
@@ -137,7 +135,7 @@ func main() {
 		protected.GET("/api/auth/me", authHandler.Me)
 		protected.PATCH("/api/users/me", authHandler.UpdateProfile)
 		protected.PATCH("/api/users/me/password", authHandler.ChangePassword)
-		protected.POST("/api/users/me/switch-organization", authHandler.SwitchOrganization) // M11: Workspace Switch
+		protected.POST("/api/users/me/switch-workspace", authHandler.SwitchWorkspace) // M11: Workspace Switch
 		protected.GET("/projects", projectHandler.FindProjects)
 		protected.GET("/projects/:id", projectHandler.GetProject)
 		protected.POST("/projects", projectHandler.CreateProject)
@@ -160,13 +158,14 @@ func main() {
 		protected.PATCH("/labels/:id", labelHandler.UpdateLabel)
 		protected.DELETE("/labels/:id", labelHandler.DeleteLabel)
 
-		protected.GET("/organizations", orgHandler.GetUserOrganizations)
-		protected.POST("/organizations", orgHandler.CreateOrganization)
-		protected.POST("/organizations/invite", orgHandler.InviteMember)
-		protected.GET("/organizations/members", orgHandler.GetMembers)
-		protected.DELETE("/organizations/members/:user_id", orgHandler.RemoveMember)
-		protected.PATCH("/organizations/members/:user_id", orgHandler.UpdateMemberRole)
-		protected.GET("/organizations/invitations", invitationHandler.GetInvitations)
+		// M-MIGRATION: Updated to /workspaces endpoints
+		protected.GET("/workspaces", wsHandler.GetUserWorkspaces)
+		protected.POST("/workspaces", wsHandler.CreateWorkspace)
+		protected.POST("/workspaces/invite", wsHandler.InviteMember)
+		protected.GET("/workspaces/members", wsHandler.GetMembers)
+		protected.DELETE("/workspaces/members/:user_id", wsHandler.RemoveMember)
+		protected.PATCH("/workspaces/members/:user_id", wsHandler.UpdateMemberRole)
+		protected.GET("/workspaces/invitations", invitationHandler.GetInvitations)
 
 		protected.GET("/clients", clientHandler.ListClients)
 		protected.GET("/clients/stats", clientHandler.GetClientStats)
@@ -182,17 +181,17 @@ func main() {
 		protected.DELETE("/invoices/:id", invoiceHandler.DeleteInvoice)
 		protected.PATCH("/invoices/:id/mark-paid", invoiceHandler.MarkPaid)
 
-		// M5: Subscription Tiers
-		protected.GET("/users/me/tier", orgHandler.GetMyTierInfo)
-		protected.PATCH("/admin/users/:id/tier", orgHandler.ActivateTier)
+		// M5: Subscription Tiers — M-MIGRATION: Updated to workspace endpoints
+		protected.GET("/users/me/tier", wsHandler.GetMyTierInfo)
+		protected.PATCH("/admin/workspaces/:id/tier", wsHandler.ActivateTier)
 	}
 
-	// Public invitation endpoints (accept doesn't require org context)
+	// Public invitation endpoints (accept doesn't require workspace context)
 	r.POST("/invite/accept", invitationHandler.AcceptInvitation)
 	r.POST("/invite/resend", invitationHandler.ResendInvitation)
 	r.DELETE("/invite/:token", invitationHandler.RevokeInvitation)
 
-	// Q11: Graceful Shutdown (placeholder — full implementation in Q11)
+	// Q11: Graceful Shutdown
 	srv := &http.Server{Addr: ":8080", Handler: r}
 
 	go func() {

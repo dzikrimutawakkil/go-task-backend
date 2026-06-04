@@ -7,7 +7,7 @@
 
 ## 🎯 Overview
 
-GoTask is a SaaS-ready task management backend API with multi-tenant organization support, role-based access control, and subscription tier system — dari registration hingga invoice billing.
+GoTask is a SaaS-ready task management backend API with multi-tenant workspace support, role-based access control, and subscription tier system — dari registration hingga invoice billing.
 
 ---
 
@@ -21,7 +21,7 @@ GoTask is a SaaS-ready task management backend API with multi-tenant organizatio
 | **Personal Workspace** | ✅ | Auto-create workspace saat register |
 | **Subscription Tiers** | ✅ | Free/Pro/Ultimate dengan quota enforcement |
 | **Quota Enforcement** | ✅ | Hard limit di service layer sebelum Create |
-| **Workspace Switching** | ✅ | Pindah antar organisasi dengan 1 endpoint |
+| **Workspace Switching** | ✅ | Pindah antar workspace dengan 1 endpoint |
 | **Project Management** | ✅ | CRUD dengan auto-generate urgency labels |
 | **Task Management** | ✅ | Full CRUD dengan assignee, labels, priorities |
 | **Urgency Labels** | ✅ | 3 labels (Urgent, Normal, Low) auto-generated per project |
@@ -77,6 +77,11 @@ DB_NAME=gotaskdb
 DB_PORT=5432
 SECRET_KEY=your_secret_key_minimum_32_chars
 LOG_LEVEL=debug
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASSWORD=your_app_password
+SMTP_FROM=noreply@gotask.app
 ```
 
 ### 3. Jalankan
@@ -122,8 +127,7 @@ curl http://localhost:8080/tier/plans
 | **Real-time (SSE)** | ❌ | ✅ | ✅ |
 | **Audit Log** | ❌ | ❌ | ✅ |
 
-- Tier diikat ke **user** (bukan organisasi)
-- Semua organisasi milik user mewarisi tier yang sama
+- Tier diikat ke **workspace** (bukan user)
 - Aktivasi dilakukan **manual** oleh admin (tanpa Stripe)
 
 ---
@@ -144,14 +148,16 @@ curl http://localhost:8080/tier/plans
 
 ### Protected Endpoints (Bearer Token Required)
 
+> **Note:** Semua endpoint dilindungi middleware `RequireAuth`. Jika header `X-Workspace-ID` tidak diberikan, sistem otomatis menggunakan personal workspace user.
+
 #### Auth & Profile
 | Method | Endpoint | Description |
 |---|---|---|
 | GET | `/api/auth/me` | Get current user profile |
 | PATCH | `/api/users/me` | Update profile (name, phone, address) |
 | PATCH | `/api/users/me/password` | Change password |
-| POST | `/api/users/me/switch-organization` | Switch active workspace |
-| GET | `/api/users/me/tier` | Get current tier + usage + limits |
+| POST | `/api/users/me/switch-workspace` | Switch active workspace |
+| GET | `/users/me/tier` | Get current tier + usage + limits |
 
 #### Projects
 | Method | Endpoint | Description |
@@ -162,7 +168,15 @@ curl http://localhost:8080/tier/plans
 | PATCH | `/projects/:id` | Update project (includes `status_id`) |
 | DELETE | `/projects/:id` | Delete project |
 
-#### Labels
+#### Status
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/projects/:id/status` | List project statuses |
+| POST | `/projects/:id/status` | Create status |
+| PATCH | `/status/:id` | Update status |
+| DELETE | `/status/:id` | Delete status |
+
+#### Labels (Urgency Level)
 | Method | Endpoint | Description |
 |---|---|---|
 | GET | `/projects/:id/labels` | List urgency labels |
@@ -173,34 +187,39 @@ curl http://localhost:8080/tier/plans
 #### Tasks
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/projects/:id/tasks` | List tasks |
-| GET | `/tasks/search` | Full-text search tasks |
+| GET | `/projects/:id/tasks` | List tasks by project |
+| GET | `/tasks/search` | Full-text search + filters |
 | POST | `/tasks` | Create task |
 | PATCH | `/tasks/:id` | Update task |
 | DELETE | `/tasks/:id` | Delete task |
 
-#### Organizations
+#### Workspaces
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/organizations` | List user's organizations |
-| POST | `/organizations` | Create organization |
-| POST | `/organizations/invite` | Invite member (email) |
-| GET | `/organizations/members` | List members |
-| PATCH | `/organizations/members/:id` | Update member role |
-| DELETE | `/organizations/members/:id` | Remove member |
-| GET | `/organizations/invitations` | Pending invitations |
-| POST | `/organizations/invitations/:id/resend` | Resend invitation |
+| GET | `/workspaces` | List user's workspaces |
+| POST | `/workspaces` | Create workspace |
+| POST | `/workspaces/invite` | Invite member (email) |
+| GET | `/workspaces/members` | List members |
+| PATCH | `/workspaces/members/:user_id` | Update member role |
+| DELETE | `/workspaces/members/:user_id` | Remove member |
+| GET | `/workspaces/invitations` | Pending invitations |
 
-#### Clients & Invoices
+#### Clients
 | Method | Endpoint | Description |
 |---|---|---|
 | GET | `/clients` | List clients |
 | POST | `/clients` | Create client |
 | GET | `/clients/stats` | Revenue statistics |
+| GET | `/clients/:id` | Get client detail |
 | PATCH | `/clients/:id` | Update client |
 | DELETE | `/clients/:id` | Delete client |
+
+#### Invoices
+| Method | Endpoint | Description |
+|---|---|---|
 | GET | `/invoices` | List invoices |
 | POST | `/invoices` | Create invoice |
+| GET | `/invoices/:id` | Get invoice detail |
 | PATCH | `/invoices/:id` | Update invoice |
 | DELETE | `/invoices/:id` | Delete invoice |
 | PATCH | `/invoices/:id/mark-paid` | Mark paid + sync client revenue |
@@ -208,7 +227,7 @@ curl http://localhost:8080/tier/plans
 #### Admin
 | Method | Endpoint | Description |
 |---|---|---|
-| PATCH | `/api/admin/users/:id/tier` | Activate/extend user tier (admin only) |
+| PATCH | `/admin/workspaces/:id/tier` | Activate/extend workspace tier |
 
 ---
 
@@ -243,9 +262,8 @@ curl http://localhost:8080/tier/plans
 ```json
 {
   "success": false,
-  "message": "quota exceeded: workspace limit is 1 on free tier. Please upgrade.",
-  "data": null,
-  "tier_info": { ... }
+  "message": "quota exceeded: project limit is 3 on free tier. Please upgrade.",
+  "data": null
 }
 ```
 
@@ -256,21 +274,23 @@ curl http://localhost:8080/tier/plans
 ```
 go-task-backend/
 ├── config/                 # Database connection + seeders
-├── docs/                   # Swagger docs + documentation
-│   ├── FLOW-USER.md        # Panduan pengguna (non-technical)
-│   ├── TECHNICAL.md        # Developer guide
-│   └── specs/done/         # Archived specs
-├── middlewares/            # Auth, CORS, rate limit, tier feature gate
-├── models/                  # Shared models (scopes, roles)
-├── modules/                 # Modular monolith
+├── docs/                  # Documentation
+│   ├── FLOW-USER.md       # Panduan pengguna (non-technical)
+│   ├── TECHNICAL.md       # Developer guide
+│   └── specs/done/        # Archived specs
+├── middlewares/           # Auth, CORS, rate limit, tier feature gate
+├── models/                 # Shared models (scopes, roles)
+├── modules/                # Modular monolith
 │   ├── auth/              # Signup, login, password reset
 │   ├── clients/           # Client CRUD + stats
-│   ├── invoices/          # Invoice + auto-numbering + revenue sync
-│   ├── organizations/     # Org + members + invitations + tier plans
-│   ├── projects/          # Project CRUD + labels
-│   └── tasks/             # Task, status, priority, labels
-├── utils/                   # Response helpers, logger, quota helpers
-├── migrations/              # Versioned database migrations
+│   ├── health/            # Health check handlers
+│   ├── invoices/           # Invoice + auto-numbering + revenue sync
+│   ├── projects/          # Project CRUD + auto-generate labels/status
+│   ├── tasks/             # Task, status, priority, labels
+│   └── workspaces/        # Workspace + members + invitations + tier plans
+├── utils/                  # Response helpers, logger, quota helpers
+├── internal/               # Interfaces
+├── migrations/              # Versioned database migrations (golang-migrate)
 ├── main.go                  # Entry point + DI + routing
 ├── docker-compose.yml       # Development environment
 └── Dockerfile              # Production multi-stage build
@@ -301,6 +321,7 @@ go-task-backend/
 - CORS configurable untuk development
 - RBAC Owner / Admin / Member
 - Tier feature gate middleware
+- Workspace membership validation on every protected request
 
 ---
 
@@ -324,6 +345,27 @@ docker-compose up -d
 # Production
 docker build -t gotask-backend .
 docker run -d -p 8080:8080 --env-file .env gotask-backend
+```
+
+---
+
+## 🔄 User Flow
+
+```
+Pengguna → Daftar → Dapat Workspace + Tier Free → Buat Project → Buat Task
+                              ↓
+                        Invite Member (opsional)
+                        Bergabung ke Workspace lain
+```
+
+### Tier Activation (Admin)
+
+```bash
+# Activate pro tier untuk 1 bulan
+curl -X PATCH http://localhost:8080/admin/workspaces/1/tier \
+  -H "Authorization: Bearer TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"tier":"pro","duration_months":1}'
 ```
 
 ---

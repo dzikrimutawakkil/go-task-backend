@@ -57,7 +57,8 @@ User daftar → Dapat Workspace (Personal) + Plan Free → Buat Project → Buat
 ### Yang dilakukan USER:
 1. Di dashboard → Klik **+ Buat Project**
 2. Isi nama project
-3. Klik **Simpan**
+3. Opsional: pilih client yang sudah ada atau buat client baru langsung
+4. Klik **Simpan**
 
 ### Yang dilakukan SISTEM:
 1. Buat record project baru
@@ -65,6 +66,7 @@ User daftar → Dapat Workspace (Personal) + Plan Free → Buat Project → Buat
 3. Auto-generate 5 task status: **Todo**, **On Progress**, **Done**, **Pending**, **Cancel**
 4. Set project status: **Active**
 5. Set task default status: **Todo** (status pertama)
+6. Opsional: link ke client atau buat client baru inline
 
 ### Hasil:
 - Project muncul di dashboard
@@ -132,7 +134,7 @@ User daftar → Dapat Workspace (Personal) + Plan Free → Buat Project → Buat
 ### Hasil:
 - Teman bisa akses project & task di workspace yang diundang
 - Free plan hanya bisa 1 member (Owner saja)
-- Pro plan bisa sampai 3 member
+- Pro plan bisa sampai 5 member
 - Ultimate plan bisa sampai 15 member
 
 ---
@@ -169,7 +171,24 @@ User daftar → Dapat Workspace (Personal) + Plan Free → Buat Project → Buat
 
 ---
 
-## 🔄 Alur #8: Upgrade Plan (Admin Aktifasi Manual)
+## 🔄 Alur #8: Link Project ke Client
+
+### Yang dilakukan USER:
+1. Buat project baru → pilih **Client** dari dropdown
+2. Atau buat client baru langsung saat bikin project (**Inline Create**)
+3. Klik **Simpan**
+
+### Yang dilakukan SISTEM:
+1. Link project ke client
+2. Client bisa di-ubah atau di-unlink kapan saja
+
+### Hasil:
+- Project menampilkan info client terkait
+- Filter project berdasarkan client
+
+---
+
+## 🔄 Alur #9: Upgrade Plan (Admin Aktifasi Manual)
 
 ### Yang dilakukan USER:
 1. Lihat banner di dashboard (jika plan **Free** atau expired)
@@ -178,26 +197,26 @@ User daftar → Dapat Workspace (Personal) + Plan Free → Buat Project → Buat
 
 ### Yang dilakukan ADMIN:
 1. Buka menu **Admin**
-2. Pilih user yang akan di-upgrade
+2. Pilih workspace yang akan di-upgrade
 3. Pilih plan: **Pro** atau **Ultimate**
 4. Pilih durasi: 1–24 bulan
 5. Klik **Aktifkan**
 
 ### Yang dilakukan SISTEM:
-1. Update user tier (free → pro/ultimate)
+1. Update workspace tier
 2. Set expiry date
-3. Semua workspace user di-upgrade otomatis
+3. Semua member workspace mendapat fitur sesuai tier
 4. Banner tier info hilang
 
 ### Hasil:
 - Banner hilang
-- Fitur premium aktif (unlimited tasks, projects, dll.)
-- Jika upgrade ke Pro: bisa buat 2 workspace, 3 member per workspace
-- Jika upgrade ke Ultimate: bisa buat 4 workspace, 15 member per workspace
+- Fitur premium aktif sesuai tier workspace
+- Tier diikat ke **workspace** (bukan ke user)
+- User bisa punya workspace berbeda dengan tier berbeda
 
 ---
 
-## 🔄 Alur #9: Pindah Workspace
+## 🔄 Alur #10: Pindah Workspace
 
 ### Yang dilakukan USER:
 1. Klik avatar/nama di pojok kanan atas
@@ -207,17 +226,18 @@ User daftar → Dapat Workspace (Personal) + Plan Free → Buat Project → Buat
 
 ### Yang dilakukan SISTEM:
 1. Validasi user adalah member workspace tersebut
-2. Update context organization
+2. Update context workspace (via `X-Workspace-ID` header)
 
 ### Hasil:
 - User berpindah ke workspace lain
 - Dashboard berubah menyesuaikan workspace baru
+- Tier yang berlaku sesuai workspace tujuan
 
 ---
 
-## 🔄 Alur #10: Buat Workspace Baru (Team Workspace)
+## 🔄 Alur #11: Buat Workspace Baru (Team Workspace)
 
-### Yang dilakukan USER (Pro/Ultimate):
+### Yang dilakukan USER (sesuai tier):
 1. Klik **+ Buat Workspace** di dashboard
 2. Isi nama workspace
 3. Klik **Simpan**
@@ -225,12 +245,13 @@ User daftar → Dapat Workspace (Personal) + Plan Free → Buat Project → Buat
 ### Yang dilakukan SISTEM:
 1. Buat record workspace baru
 2. Set user sebagai **Owner**
-3. Workspace inherit tier dari user
-4. Jika Free user sudah punya 1 workspace → tidak bisa tambah (HTTP 403)
+3. Workspace mulai dengan tier **Free**
+4. Quota check: Free=1 workspace, Pro=2, Ultimate=4
 
 ### Hasil:
 - Workspace baru muncul di daftar
 - Bisa invite member ke workspace baru
+- Workspace baru berdiri sendiri dengan tier masing-masing
 
 ---
 
@@ -249,7 +270,7 @@ User daftar → Dapat Workspace (Personal) + Plan Free → Buat Project → Buat
 |---|---|---|
 | **Urgent** | 🔴 Merah | Harus selesai secepatnya |
 | **Normal** | 🟡 Kuning | Prioritas standar |
-| **Low** | 🔵 Biru | Bisa nanti |
+| **Low** | 🟢 Hijau | Bisa nanti |
 
 ### Task Status (Workflow):
 | Status | Arti |
@@ -260,13 +281,13 @@ User daftar → Dapat Workspace (Personal) + Plan Free → Buat Project → Buat
 | Pending | Menunggu |
 | Cancel | Dibatalkan |
 
-### Plan/Quota:
+### Plan/Quota (per Workspace):
 | Resource | Free | Pro | Ultimate |
 |---|---|---|---|
 | Workspace | 1 | 2 | 4 |
 | Project per workspace | 3 | Unlimited | Unlimited |
 | Task per project | 50 | Unlimited | Unlimited |
-| Member per workspace | 1 | 3 | 15 |
+| Member per workspace | 1 | 5 | 15 |
 | Clients | 5 | Unlimited | Unlimited |
 | Invoice per bulan | 10 | Unlimited | Unlimited |
 
@@ -286,6 +307,16 @@ User daftar → Dapat Workspace (Personal) + Plan Free → Buat Project → Buat
 
 ---
 
+## 💰 Pricing
+
+| Plan | Harga/Bulan | Untuk |
+|---|---|---|
+| **Free** | Rp 0 | Perorangan, coba-coba |
+| **Pro** | Rp 79.000 | Freelancer, pekerja lepas |
+| **Ultimate** | Rp 199.000 | Tim kecil, agensi |
+
+---
+
 ## 🌟 Fitur Premium
 
 Fitur di bawah ini **tidak tersedia** di plan Free:
@@ -297,7 +328,7 @@ Fitur di bawah ini **tidak tersedia** di plan Free:
 | Unlimited Clients | ❌ | ✅ | ✅ |
 | Unlimited Invoices | ❌ | ✅ | ✅ |
 | Multiple Workspace | ❌ | ✅ (2) | ✅ (4) |
-| Multiple Members | ❌ | ✅ (3) | ✅ (15) |
+| Multiple Members | ❌ | ✅ (5) | ✅ (15) |
 | Comments di Task | ❌ | ✅ | ✅ |
 | Real-time Updates (SSE) | ❌ | ✅ | ✅ |
 | Audit Log | ❌ | ❌ | ✅ |

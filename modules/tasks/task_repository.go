@@ -175,7 +175,7 @@ func (r *repository) AssignUsers(task *Task, userIDs []uint) error {
 func (r *repository) CheckProjectAccess(projectID string, orgID string) (bool, error) {
 	var count int64
 	err := r.db.Table("projects").
-		Where("id = ? AND organization_id = ?", projectID, orgID).
+		Where("id = ? AND workspace_id = ?", projectID, orgID).
 		Count(&count).Error
 
 	if err != nil {
@@ -264,7 +264,7 @@ func (r *repository) GetProjectOrgID(projectID string) (uint, error) {
 		OrgID uint
 	}
 	err := r.db.Table("projects").
-		Select("organization_id").
+		Select("workspace_id").
 		Where("id = ?", projectID).
 		Scan(&result).Error
 	return result.OrgID, err
@@ -279,7 +279,7 @@ func (r *repository) SearchTasks(orgID string, query string, filters TaskFilters
 	// Base query: join through projects to filter by org
 	baseQuery := r.db.Table("tasks").
 		Joins("JOIN projects ON tasks.project_id = projects.id").
-		Where("projects.organization_id = ?", orgID)
+		Where("projects.workspace_id = ?", orgID)
 
 	// Apply text search on title
 	if query != "" {

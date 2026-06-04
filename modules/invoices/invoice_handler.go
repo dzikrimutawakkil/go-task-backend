@@ -58,17 +58,18 @@ func NewInvoiceHandler(service InvoiceService) *Handler {
 
 // ListInvoices godoc
 // @Summary     List invoices
-// @Description Get all invoices for the current organization.
+// @Description Get all invoices for the current workspace.
 // @Tags        Invoices
 // @Produce     json
+// @Param       X-Workspace-ID header string true "Workspace ID"
 // @Security    BearerAuth
 // @Success     200 {object} utils.APIResponse "success"
 // @Failure     500 {object} utils.APIResponse "Failed to fetch invoices"
 // @Router      /invoices [get]
 func (h *Handler) ListInvoices(c *gin.Context) {
-	orgID := c.MustGet("org_id").(string)
+	workspaceID := c.MustGet("workspace_id").(string)
 
-	invoices, err := h.service.GetInvoices(orgID)
+	invoices, err := h.service.GetInvoices(workspaceID)
 	if err != nil {
 		utils.SendError(c, http.StatusInternalServerError, "Failed to fetch invoices")
 		return
@@ -112,14 +113,15 @@ func (h *Handler) GetInvoice(c *gin.Context) {
 // @Accept      json
 // @Produce     json
 // @Param       body body CreateInvoiceRequest true "Invoice payload"
+// @Param       X-Workspace-ID header string true "Workspace ID"
 // @Security    BearerAuth
 // @Success     201 {object} utils.APIResponse "Invoice created successfully"
 // @Failure     400 {object} utils.APIResponse "Validation error"
 // @Failure     500 {object} utils.APIResponse "Failed to create invoice"
 // @Router      /invoices [post]
 func (h *Handler) CreateInvoice(c *gin.Context) {
-	orgIDStr := c.MustGet("org_id").(string)
-	orgID, _ := strconv.ParseUint(orgIDStr, 10, 64)
+	workspaceIDStr := c.MustGet("workspace_id").(string)
+	workspaceID, _ := strconv.ParseUint(workspaceIDStr, 10, 64)
 
 	var req CreateInvoiceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -157,16 +159,16 @@ func (h *Handler) CreateInvoice(c *gin.Context) {
 	}
 
 	input := CreateInvoiceInput{
-		OrganizationID: uint(orgID),
-		ClientID:       req.ClientID,
-		ProjectID:      req.ProjectID,
-		Title:          req.Title,
-		Amount:         req.Amount,
-		Tax:            tax,
-		Discount:       discount,
-		DueDate:        dueDate,
-		Notes:          req.Notes,
-		Items:          items,
+		WorkspaceID: uint(workspaceID),
+		ClientID:    req.ClientID,
+		ProjectID:   req.ProjectID,
+		Title:       req.Title,
+		Amount:      req.Amount,
+		Tax:         tax,
+		Discount:    discount,
+		DueDate:     dueDate,
+		Notes:       req.Notes,
+		Items:       items,
 	}
 
 	invoice, err := h.service.CreateInvoice(input)

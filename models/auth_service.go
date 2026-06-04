@@ -3,24 +3,20 @@ package models
 import "time"
 
 // MinimalUser is a minimal user representation for cross-package interfaces.
-// Used to avoid import cycles between auth and organizations packages.
-// M5: Subscription Tiers — replaced Plan/License with Tier fields.
+// Used to avoid import cycles between auth and workspaces packages.
+// M-MIGRATION: Removed Tier fields - tier is now per-workspace, not per-user.
 type MinimalUser struct {
-	ID              uint
-	Email           string
-	Name            string
-	Phone           string
-	Address         string
-	Password        string     `json:"-"`
-	Tier            string     `json:"tier"`
-	TierExpiresAt   *time.Time `json:"tier_expires_at,omitempty"`
-	TierActivatedAt *time.Time `json:"tier_activated_at,omitempty"`
-	TierActivatedBy *uint      `json:"tier_activated_by,omitempty"`
-	CreatedAt       time.Time
+	ID        uint      `json:"id"`
+	Email     string    `json:"email"`
+	Name      string    `json:"name"`
+	Phone     string    `json:"phone"`
+	Address   string    `json:"address"`
+	Password  string    `json:"-"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // AuthService defines the authentication operations needed by other packages.
-// Defined here (neutral package) to avoid import cycles between auth and organizations packages.
+// Defined here (neutral package) to avoid import cycles between auth and workspaces packages.
 type AuthService interface {
 	GetUserByEmail(email string) (*MinimalUser, error)
 	GetUsersByIDs(ids []uint) ([]MinimalUser, error)
